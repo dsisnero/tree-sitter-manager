@@ -1,0 +1,1 @@
+{"rustc":18169182855791486453,"features":"[]","declared_features":"[\"malloc_size_of\"]","target":8685724387380193655,"profile":1369601567987815722,"path":7395226749365875916,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"release/.fingerprint/smallbitvec-d7c62c4858e6fe04/dep-lib-smallbitvec","checksum":false}}],"rustflags":[],"config":9396254390672932401,"compile_kind":0}

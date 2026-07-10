@@ -1,0 +1,6 @@
+[submodule "vendor/syntastica"]
+	path = vendor/syntastica
+	url = https://github.com/RubixDev/syntastica.git
+[submodule "vendor/tree-sitter-language-pack"]
+	path = vendor/tree-sitter-language-pack
+	url = https://github.com/xberg-io/tree-sitter-language-pack.git

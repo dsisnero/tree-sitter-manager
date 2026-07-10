@@ -1,0 +1,46 @@
+module TreeSitterManager
+  module Themes
+    def omni_omni : ResolvedTheme
+      t = Theme.new
+      t.set_extended("_normal", color: "#e1e1e6", bg: "#191622")
+      t.set("attribute", "#988bc7")
+      t.set("attribute.builtin", "#78d1e1")
+      t.set("boolean", "#e7de79")
+      t.set_extended("character", color: "#67e480", bold: true)
+      t.set_extended("comment", color: "#5a4b81", italic: true)
+      t.set("comment.error", "#ffc0b9")
+      t.set("comment.note", "#8cf8f7")
+      t.set_extended("comment.todo", color: "#988bc7", bold: true)
+      t.set("comment.warning", "#fce094")
+      t.set("constant", "#a1efe4")
+      t.set("constant.builtin", "#78d1e1")
+      t.set("constructor", "#78d1e1")
+      t.set("diff.delta", "#8cf8f7")
+      t.set("diff.minus", "#ffc0b9")
+      t.set("diff.plus", "#b3f6c0")
+      t.set_extended("function", color: "#78d1e1", italic: true)
+      t.set("function.builtin", "#78d1e1")
+      t.set("ibl.scope.char.1", "#5a4b81")
+      t.set("keyword", "#e61f44")
+      t.set_extended("label", color: "#78d1e1", italic: true)
+      t.set("markup", "#78d1e1")
+      t.set("markup.heading", "#67e480")
+      t.set("module", "#e7de79")
+      t.set("module.builtin", "#78d1e1")
+      t.set("number", "#e7de79")
+      t.set("number.float", "#e7de79")
+      t.set("operator", "#78d1e1")
+      t.set("property", "#e61f44")
+      t.set("punctuation.special", "#78d1e1")
+      t.set("string", "#67e480")
+      t.set("tag", "#e7de79")
+      t.set("tag.builtin", "#78d1e1")
+      t.set("type", "#e7de79")
+      t.set("type.builtin", "#78d1e1")
+      t.set("variable", "#e0e2ea")
+      t.set("variable.builtin", "#78d1e1")
+      t.set("variable.parameter.builtin", "#78d1e1")
+      t.resolve
+    end
+  end
+end

@@ -1,0 +1,10 @@
+[package]
+name = "syntastica-compare"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+syntastica = { path = "../../vendor/syntastica" }
+syntastica-core = { path = "../../vendor/syntastica/syntastica-core" }
+syntastica-themes = { path = "../../vendor/syntastica/syntastica-themes" }
+syntastica-parsers-git = { path = "../../vendor/syntastica/syntastica-parsers-git" }

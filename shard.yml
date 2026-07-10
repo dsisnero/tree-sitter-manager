@@ -1,0 +1,28 @@
+name: tree-sitter-manager
+version: 0.1.0
+
+authors:
+  - Dominic Sisneros <dsisnero@gmail.com>
+
+crystal: '>= 1.19.1'
+
+license: MIT
+
+targets:
+  tree-sitter-manager:
+    main: src/tree-sitter-manager.cr
+  tsm-tui:
+    main: src/tsm-tui.cr
+
+dependencies:
+  tree_sitter:
+    github: dsisnero/crystal-tree-sitter
+    branch: fix/windows-uint16-portability
+  lipgloss:
+    github: dsisnero/lipgloss
+  bubbles:
+    github: dsisnero/bubbles
+  clip:
+    github: erdnaxeli/clip
+  toml:
+    github: crystal-community/toml.cr
