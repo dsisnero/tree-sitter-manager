@@ -1,0 +1,11 @@
+[global]
+exclude = [
+    ".git",
+    "lib",
+    "temp",
+    "vendor",
+    "spec",
+    "CHANGELOG.md",
+    "LICENSE.md",
+]
+respect-gitignore = true

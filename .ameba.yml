@@ -1,0 +1,7 @@
+Version: "1.7.0-dev"
+
+Excluded:
+  - temp/**/*
+  - lib/**/*
+  - vendor/**/*
+  - spec/**/*
