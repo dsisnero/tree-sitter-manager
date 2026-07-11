@@ -7,6 +7,10 @@
 # Temporary working artifacts
 temp/
 
+# Apple Double files
+.DS_Store
+._*
+
 # Dependency directories (exclude only when not used as committed source-of-truth)
 # vendor/
 
