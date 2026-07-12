@@ -176,13 +176,16 @@ module TreeSitterManager
       end
 
       # Clojure — WASM-based, different package
+      # NB: extensions must NOT include the leading dot — LanguageRegistry
+      # expects bare extension strings.  The dot is added by callers via
+      # File.extname which already returns ".ext".
       registry["clojure"] = LanguageInfo.new(
         name: "clojure",
         package: "@yogthos/tree-sitter-clojure",
         wasm: true,
         wasm_file: "tree-sitter-clojure.wasm",
         preferred_method: :npm,
-        extensions: [".clj", ".cljs", ".cljc", ".edn"],
+        extensions: ["clj", "cljs", "cljc", "edn"],
         git_url: registry["clojure"]?.try(&.git_url) || "",
         git_rev: registry["clojure"]?.try(&.git_rev) || "",
         ffi_func: registry["clojure"]?.try(&.ffi_func) || "",

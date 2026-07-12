@@ -89,8 +89,7 @@ module TreeSitterManager
             channel.send(BatchResult.success(results))
           else
             channel.send(BatchResult.new(
-              success: false,
-              results: results,
+              value: results,
               metadata: {"failed" => failed.to_a.join(",")},
             ))
           end
@@ -220,8 +219,9 @@ module TreeSitterManager
         end
       end
 
-      # If there are remaining nodes (cycle), add them as a fallback level
-      levels << remaining.to_a unless remaining.empty?
+      # If there are remaining nodes (cycle), return the original order
+      # rather than partial levels + an arbitrary fallback.
+      return [languages] unless remaining.empty?
       levels
     end
 
@@ -366,7 +366,7 @@ module TreeSitterManager
             updated_count += 1 if was_updated
           end
 
-          batch_result = BatchResult.new(results: results)
+          batch_result = BatchResult.new(value: results)
           batch_result.metadata = {"updated_count" => updated_count.to_s}
           channel.send(batch_result)
         rescue ex
