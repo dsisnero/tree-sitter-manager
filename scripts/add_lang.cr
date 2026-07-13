@@ -7,9 +7,9 @@
 require "process"
 
 group = ARGV[0]?
-name   = ARGV[1]?
-url    = ARGV[2]?
-path   = ARGV[3]?
+name = ARGV[1]?
+url = ARGV[2]?
+path = ARGV[3]?
 
 abort "Usage: crystal run scripts/add_lang.cr -- <group> <name> <git-url> [path]" unless group && name && url
 
@@ -18,22 +18,22 @@ abort "group must be one of: some, most, all" unless %w[some most all].includes?
 # Get latest revision
 puts "Fetching latest revision for #{url}..."
 rev = if url.starts_with?("https://github.com/")
-  # Use GitHub API pattern: ls-remote
-  output = `git ls-remote #{url} HEAD 2>/dev/null`
-  if $?.success? && output =~ /^(\S+)/
-    $1
-  else
-    STDERR.puts "Warning: Could not fetch revision, using placeholder"
-    "PLACEHOLDER_REVISION"
-  end
-else
-  output = `git ls-remote #{url} HEAD 2>/dev/null`
-  if $?.success? && output =~ /^(\S+)/
-    $1
-  else
-    "PLACEHOLDER_REVISION"
-  end
-end
+        # Use GitHub API pattern: ls-remote
+        output = `git ls-remote #{url} HEAD 2>/dev/null`
+        if $?.success? && output =~ /^(\S+)/
+          $1
+        else
+          STDERR.puts "Warning: Could not fetch revision, using placeholder"
+          "PLACEHOLDER_REVISION"
+        end
+      else
+        output = `git ls-remote #{url} HEAD 2>/dev/null`
+        if $?.success? && output =~ /^(\S+)/
+          $1
+        else
+          "PLACEHOLDER_REVISION"
+        end
+      end
 puts "  revision: #{rev[0..12]}..."
 
 # Detect package name

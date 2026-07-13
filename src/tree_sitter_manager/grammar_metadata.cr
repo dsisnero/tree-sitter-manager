@@ -69,18 +69,20 @@ module TreeSitterManager
       end
     end
 
-    # Save metadata to a grammar directory
+    # Save metadata to a grammar directory using atomic write
+    # (temp file + rename to prevent partial writes)
     def self.save(grammar_dir : String, metadata : GrammarMetadata) : Bool
       metadata_path = File.join(grammar_dir, METADATA_FILENAME)
+      temp_path = "#{grammar_dir}/.#{METADATA_FILENAME}.tmp.#{Process.pid}.#{Random.rand(1_000_000)}"
 
       begin
-        # Create directory if it doesn't exist
         Dir.mkdir_p(grammar_dir) unless Dir.exists?(grammar_dir)
 
-        # Write metadata
-        File.write(metadata_path, metadata.to_pretty_json)
+        File.write(temp_path, metadata.to_pretty_json)
+        File.rename(temp_path, metadata_path)
         true
       rescue File::Error
+        File.delete(temp_path) if File.exists?(temp_path)
         false
       end
     end

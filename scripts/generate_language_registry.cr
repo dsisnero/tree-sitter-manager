@@ -21,27 +21,27 @@ TOML.parse_file(SYNTASTICA)["languages"].as_a.each do |l|
   name = h["name"].as_s
   q = h["queries"]?.try(&.as_h)
   synt_langs[name] = {
-    "nvim"    => q.try { |q| q["nvim-like"]?.try { |v| v.raw == true } } || true,
-    "inj"     => q.try { |q| q["injections"]?.try { |v| v.raw == true } } || false,
-    "local"   => q.try { |q| q["locals"]?.try { |v| v.raw == true } } || false,
+    "nvim"  => q.try { |q| q["nvim-like"]?.try { |v| v.raw == true } } || true,
+    "inj"   => q.try { |q| q["injections"]?.try { |v| v.raw == true } } || false,
+    "local" => q.try { |q| q["locals"]?.try { |v| v.raw == true } } || false,
   }
 end
 
 STDERR.puts "Language-pack: #{lang_defs.size}, Syntastica query info: #{synt_langs.size}"
 
 # Collect language data as arrays for output generation
-lang_names   = [] of String
-lang_exts    = [] of Array(String)
-lang_gits    = [] of String
-lang_revs    = [] of String
-lang_ffi     = [] of String
-lang_csym    = [] of String?
-lang_dir     = [] of String?
-lang_abi     = [] of Int64?
-lang_gen     = [] of Bool
-lang_nvim    = [] of Bool
-lang_inj     = [] of Bool
-lang_loc     = [] of Bool
+lang_names = [] of String
+lang_exts = [] of Array(String)
+lang_gits = [] of String
+lang_revs = [] of String
+lang_ffi = [] of String
+lang_csym = [] of String?
+lang_dir = [] of String?
+lang_abi = [] of Int64?
+lang_gen = [] of Bool
+lang_nvim = [] of Bool
+lang_inj = [] of Bool
+lang_loc = [] of Bool
 
 lang_defs.each do |name, defn|
   repo = defn["repo"].as_s
@@ -59,17 +59,17 @@ lang_defs.each do |name, defn|
   syn = synt_langs[name]? || {"nvim" => true, "inj" => false, "local" => false}
 
   lang_names << name
-  lang_exts  << exts
-  lang_gits  << repo
-  lang_revs  << rev
-  lang_ffi   << ffi
-  lang_csym  << csym
-  lang_dir   << dir
-  lang_abi   << abi
-  lang_gen   << gen
-  lang_nvim  << syn["nvim"]
-  lang_inj   << syn["inj"]
-  lang_loc   << syn["local"]
+  lang_exts << exts
+  lang_gits << repo
+  lang_revs << rev
+  lang_ffi << ffi
+  lang_csym << csym
+  lang_dir << dir
+  lang_abi << abi
+  lang_gen << gen
+  lang_nvim << syn["nvim"]
+  lang_inj << syn["inj"]
+  lang_loc << syn["local"]
 end
 
 n = lang_names.size

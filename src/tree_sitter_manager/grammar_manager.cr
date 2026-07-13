@@ -190,6 +190,21 @@ module TreeSitterManager
       channel
     end
 
+    # Copy a file atomically: cp to temp, then rename.
+    # Prevents dlopen from seeing a partially written shared library.
+    private def atomic_copy(src : String, dest : String) : Bool
+      temp = "#{File.dirname(dest)}/.#{File.basename(dest)}.tmp.#{Process.pid}.#{Random.rand(1_000_000)}"
+      begin
+        FileUtils.cp(src, temp)
+        File.chmod(temp, 0o755)
+        File.rename(temp, dest)
+        true
+      rescue
+        File.delete(temp) if File.exists?(temp)
+        false
+      end
+    end
+
     # Clear cache (async, non-blocking)
     def clear_cache_async : Channel(BoolResult)
       channel = Channel(BoolResult).new
@@ -565,8 +580,7 @@ module TreeSitterManager
 
           return BoolResult.failure("compiled lib not found") unless File.exists?(output)
 
-          FileUtils.cp(output, cached)
-          File.chmod(cached, 0o755)
+          atomic_copy(output, cached)
         end
       rescue ex
         return BoolResult.failure("Install error: #{ex.message}", {"language" => language})
@@ -645,8 +659,8 @@ module TreeSitterManager
               next
             end
 
-            # Copy to cache
-            FileUtils.cp(output_path, cached_lib)
+            # Copy to cache atomically (prevents dlopen from seeing partial write)
+            atomic_copy(output_path, cached_lib)
 
             # Save metadata
             commit_hash = nil
@@ -915,7 +929,7 @@ module TreeSitterManager
 
           dest_lib = File.join(cache_lib_dir, lib_name)
           if File.exists?(lib_name)
-            FileUtils.cp(lib_name, dest_lib)
+            atomic_copy(lib_name, dest_lib)
             return true
           end
         end
@@ -947,7 +961,7 @@ module TreeSitterManager
         Dir.mkdir_p(cache_lib_dir)
 
         dest_lib = File.join(cache_lib_dir, lib_name)
-        FileUtils.cp(source_path, dest_lib)
+        atomic_copy(source_path, dest_lib)
         return true
       end
 
@@ -1172,7 +1186,7 @@ module TreeSitterManager
               cache_lib_dir = File.join(cache_dir, inferred_language)
               Dir.mkdir_p(cache_lib_dir)
               dest_lib = File.join(cache_lib_dir, lib_name)
-              FileUtils.cp(source_lib, dest_lib)
+              atomic_copy(source_lib, dest_lib)
 
               # Create metadata
               metadata = GrammarMetadata.new(
