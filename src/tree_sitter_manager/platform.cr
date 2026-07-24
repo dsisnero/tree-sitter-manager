@@ -68,6 +68,11 @@ module TreeSitterManager
       {% end %}
     end
 
+    # Stable platform identifier for parser-pack manifests and release assets.
+    def artifact_tag : String
+      "#{os_name}-#{arch_name}"
+    end
+
     # Check if we are on a unix-like system (macOS or Linux).
     def unix? : Bool
       {% if flag?(:unix) %}
