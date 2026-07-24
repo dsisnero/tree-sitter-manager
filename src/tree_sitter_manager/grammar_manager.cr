@@ -50,6 +50,10 @@ module TreeSitterManager
             Dir.mkdir_p(cache_dir)
             migrate_legacy_cache_if_needed
 
+            # A release can ship a verified native parser pack. Installing it
+            # here keeps normal GrammarLoader lookup cache-first and offline.
+            ParserPack.install_from_environment(cache_dir)
+
             # Extract embedded grammars if available
             extract_embedded_grammars(cache_dir)
           rescue File::Error
