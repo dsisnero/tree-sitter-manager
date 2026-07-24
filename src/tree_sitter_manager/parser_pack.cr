@@ -1,5 +1,6 @@
 require "digest/sha256"
 require "json"
+require "./language_registry"
 
 module TreeSitterManager
   # Installs a locally available, platform-specific parser bundle into the
@@ -16,7 +17,8 @@ module TreeSitterManager
     class ChecksumError < Error
     end
 
-    MANIFEST_NAME = "parser-pack.json"
+    MANIFEST_NAME    = "parser-pack.json"
+    MANIFEST_VERSION = 1
 
     # If set, this directory is installed during GrammarManager initialization.
     # It makes a parser pack shipped beside an application available without a
@@ -25,7 +27,7 @@ module TreeSitterManager
 
     def self.install_from_environment(cache_dir : String = XDG.grammar_cache_dir) : Array(String)
       bundle_dir = ENV[ENVIRONMENT_DIRECTORY]?
-      return [] of String unless bundle_dir && !bundle_dir.empty?
+      return [] of String if bundle_dir.nil? || bundle_dir.empty?
 
       install_from_directory(bundle_dir, cache_dir)
     end
@@ -35,6 +37,11 @@ module TreeSitterManager
       raise Error.new("Parser-pack manifest not found: #{manifest_path}") unless File.file?(manifest_path)
 
       manifest = JSON.parse(File.read(manifest_path))
+      version = manifest["version"].as_i
+      unless version == MANIFEST_VERSION
+        raise Error.new("Unsupported parser-pack manifest version: #{version}")
+      end
+
       expected_platform = manifest["platform"].as_s
       actual_platform = Platform.artifact_tag
       unless expected_platform == actual_platform
@@ -46,6 +53,7 @@ module TreeSitterManager
         language = parser["language"].as_s
         relative_path = parser["file"].as_s
         expected_sha256 = parser["sha256"].as_s
+        validate_language!(language)
         validate_relative_path!(relative_path)
 
         source = File.join(bundle_dir, relative_path)
@@ -61,7 +69,8 @@ module TreeSitterManager
       # Validate every file before creating or changing the cache.
       verified.each do |language, source|
         destination_dir = File.join(cache_dir, language)
-        destination = File.join(destination_dir, Platform.grammar_library_name(language))
+        library_name = Platform.grammar_library_name(LanguageRegistry.c_symbol_for(language))
+        destination = File.join(destination_dir, library_name)
         Dir.mkdir_p(destination_dir)
         temporary = "#{destination}.tmp-#{Random::Secure.hex(8)}"
         begin
@@ -79,6 +88,12 @@ module TreeSitterManager
     private def self.validate_relative_path!(path : String) : Nil
       if path.empty? || Path[path].absolute? || path.split('/').includes?("..") || path.split('\\').includes?("..")
         raise Error.new("Unsafe parser-pack path: #{path}")
+      end
+    end
+
+    private def self.validate_language!(language : String) : Nil
+      if language.empty? || language.includes?('/') || language.includes?('\\') || language == "." || language == ".."
+        raise Error.new("Unsafe parser-pack language: #{language}")
       end
     end
   end
