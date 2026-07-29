@@ -1,3 +1,5 @@
+require "dir-walk"
+
 module TreeSitterManager
   # Manages pre-built parser shared libraries downloaded from GitHub releases.
   # Ported from tree-sitter-language-pack download.rs.
@@ -28,19 +30,42 @@ module TreeSitterManager
       return [] of String unless Dir.exists?(@cache_dir)
 
       languages = [] of String
-      Dir.children(@cache_dir).each do |entry|
-        next unless entry.ends_with?(".so") || entry.ends_with?(".dylib") || entry.ends_with?(".dll")
+      discovered = Channel(String).new
+      completed = Channel(Nil).new
 
-        # Extract language name from libtree-sitter-<name>.<ext>
-        name = entry
-          .sub(/^lib/, "")
-          .sub(/\.(so|dylib|dll)$/, "")
-        if name.starts_with?("tree-sitter-") || name.starts_with?("tree_sitter-")
-          name = name.sub(/^tree.sitter./, "")
+      spawn do
+        begin
+          Dir::Walk.walk(nil, @cache_dir) do |path, entry, error|
+            next if error || !entry || !entry.file?
+
+            if language = language_from_library_path(path)
+              discovered.send(language)
+            end
+          end
+        ensure
+          discovered.close
+          completed.send(nil)
         end
-        languages << name unless languages.includes?(name)
       end
+
+      while language = discovered.receive?
+        languages << language unless languages.includes?(language)
+      end
+      completed.receive
+
       languages
+    end
+
+    private def language_from_library_path(path : String) : String?
+      entry = File.basename(path)
+      return nil unless entry.ends_with?(".so") || entry.ends_with?(".dylib") || entry.ends_with?(".dll")
+
+      name = entry
+        .sub(/^lib/, "")
+        .sub(/\.(so|dylib|dll)$/, "")
+      if name.starts_with?("tree-sitter-") || name.starts_with?("tree_sitter-")
+        name.sub(/^tree.sitter./, "")
+      end
     end
   end
 end

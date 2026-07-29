@@ -45,4 +45,17 @@ describe TreeSitterManager::DownloadManager do
       FileUtils.rm_rf(tmp) if Dir.exists?(tmp)
     end
   end
+
+  it "discovers installed libraries in nested cache directories" do
+    tmp = File.join(Dir.tempdir, "tsm-test-cache-#{Random.rand}")
+    begin
+      nested = File.join(tmp, "releases", "python")
+      Dir.mkdir_p(nested)
+      File.write(File.join(nested, "libtree-sitter-python.so"), "fake")
+
+      TreeSitterManager::DownloadManager.new(tmp).installed_languages.should contain("python")
+    ensure
+      FileUtils.rm_rf(tmp) if Dir.exists?(tmp)
+    end
+  end
 end

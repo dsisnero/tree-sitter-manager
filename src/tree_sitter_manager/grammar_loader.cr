@@ -1,5 +1,7 @@
 require "tree_sitter"
+require "dir-walk"
 require "./xdg"
+require "./directory_walker"
 
 module TreeSitterManager
   # Platform-aware grammar shared library loading.
@@ -9,6 +11,9 @@ module TreeSitterManager
 
     @@grammar_directories_mutex = Mutex.new
     @@grammar_directories = [] of String
+
+    ENVIRONMENT_GRAMMAR_DIRECTORY        = "TREE_SITTER_MANAGER_GRAMMAR_DIR"
+    LEGACY_ENVIRONMENT_GRAMMAR_DIRECTORY = "CHIASMUS_GRAMMAR_DIR"
 
     def register_grammar_directory(path : String) : Nil
       return unless Dir.exists?(path)
@@ -22,6 +27,16 @@ module TreeSitterManager
       @@grammar_directories_mutex.synchronize { @@grammar_directories.dup }
     end
 
+    # Returns the explicit grammar root configured by the host application.
+    # The Chiasmus variable remains a compatibility fallback only.
+    def configured_grammar_directory : String?
+      [ENV[ENVIRONMENT_GRAMMAR_DIRECTORY]?, ENV[LEGACY_ENVIRONMENT_GRAMMAR_DIRECTORY]?].each do |directory|
+        return directory if directory && Dir.exists?(directory)
+      end
+
+      nil
+    end
+
     def tree_sitter_available?(language : String) : Bool
       find_grammar_library(language) != nil
     end
@@ -32,6 +47,8 @@ module TreeSitterManager
 
       lib_name = "libtree-sitter-#{symbol_name}"
       search_paths = grammar_search_paths
+      ext = shared_library_extension
+      standard_library_name = "#{lib_name}.#{ext}"
 
       search_paths.each do |dir|
         next unless Dir.exists?(dir)
@@ -46,8 +63,6 @@ module TreeSitterManager
 
         candidate_dirs.each do |candidate_dir|
           next unless Dir.exists?(candidate_dir)
-
-          ext = shared_library_extension
 
           # Standard name: libtree-sitter-{symbol}.{ext}
           lib_path = File.join(candidate_dir, "#{lib_name}.#{ext}")
@@ -66,12 +81,19 @@ module TreeSitterManager
           return parser_path if File.exists?(parser_path)
 
           # Check subdirectories (e.g., tree-sitter-typescript/typescript/)
-          Dir.children(candidate_dir).each do |sub|
+          DirectoryWalker.children(candidate_dir).each do |sub|
             sub_path = File.join(candidate_dir, sub)
             next unless Dir.exists?(sub_path)
             sub_lib = File.join(sub_path, "#{lib_name}.#{ext}")
             return sub_lib if File.exists?(sub_lib)
           end
+        end
+
+        # Sidecar packages and release archives may add layout directories.
+        # Preserve search-root precedence by falling back before moving to the
+        # next configured root.
+        if library = find_library_recursively(dir, standard_library_name)
+          return library
         end
       end
 
@@ -81,10 +103,8 @@ module TreeSitterManager
     private def grammar_search_paths : Array(String)
       search_paths = [] of String
 
-      if env_dir = ENV["CHIASMUS_GRAMMAR_DIR"]?
-        if Dir.exists?(env_dir)
-          search_paths << env_dir
-        end
+      if env_dir = configured_grammar_directory
+        search_paths << env_dir
       end
 
       grammar_directories.each do |dir|
@@ -162,6 +182,33 @@ module TreeSitterManager
       {% else %}
         "so"
       {% end %}
+    end
+
+    private def find_library_recursively(root : String, library_name : String) : String?
+      return nil unless Dir.exists?(root)
+
+      matches = [] of String
+      discovered = Channel(String).new
+      completed = Channel(Nil).new(1)
+
+      spawn do
+        begin
+          Dir::Walk.walk(nil, root) do |path, entry, error|
+            next if error || !entry || !entry.file?
+            discovered.send(path) if File.basename(path) == library_name
+          end
+        ensure
+          discovered.close
+          completed.send(nil)
+        end
+      end
+
+      while path = discovered.receive?
+        matches << path
+      end
+      completed.receive
+
+      matches.sort!.first?
     end
   end
 end

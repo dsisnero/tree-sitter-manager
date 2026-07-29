@@ -26,11 +26,3 @@ describe TreeSitterManager::GrammarManager, "#compile_sources" do
     TreeSitterManager::GrammarManager.responds_to?(:compile_sources).should be_true
   end
 end
-
-describe "SourceHighlighter with async grammar ensure" do
-  it "reports grammar not found for uninstalled language" do
-    hl = TreeSitterManager::SourceHighlighter.new("elixir", "queries")
-    result = hl.try_load
-    result.should be_nil
-  end
-end

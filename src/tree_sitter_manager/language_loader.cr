@@ -1,5 +1,6 @@
 require "tree_sitter"
 require "lib_c"
+require "./grammar_loader"
 
 module TreeSitterManager
   module LanguageLoader
@@ -55,7 +56,7 @@ module TreeSitterManager
     private def vendor_grammar_path(language : String) : String?
       grammar_dir_name = language == "csharp" ? "tree-sitter-c-sharp" : "tree-sitter-#{language}"
 
-      if env_dir = ENV["CHIASMUS_GRAMMAR_DIR"]?
+      if env_dir = GrammarLoader.configured_grammar_directory
         candidate = File.join(env_dir, grammar_dir_name)
         return candidate if Dir.exists?(candidate)
       end

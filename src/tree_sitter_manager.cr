@@ -1,0 +1,24 @@
+# Reusable Tree-sitter grammar and parser runtime.
+#
+# This entry point deliberately excludes the CLI, TUI, highlighter, themes, and
+# renderer stack. Applications that need those presentation features should
+# depend on tree-sitter-manager-cli instead.
+require "./tree_sitter_manager/platform"
+require "./tree_sitter_manager/result"
+require "./tree_sitter_manager/timeout"
+require "./tree_sitter_manager/xdg"
+require "./tree_sitter_manager/directory_walker"
+require "./tree_sitter_manager/language_registry"
+require "./tree_sitter_manager/language_detection"
+require "./tree_sitter_manager/embedded_grammars"
+require "./tree_sitter_manager/language_loader"
+require "./tree_sitter_manager/grammar_loader"
+require "./tree_sitter_manager/grammar_query"
+require "./tree_sitter_manager/parser_language_resolver"
+require "./tree_sitter_manager/parser_service"
+require "./tree_sitter_manager/parser_pack"
+require "./tree_sitter_manager/download_manager"
+require "./tree_sitter_manager/grammar_metadata"
+require "./tree_sitter_manager/grammar_operations"
+require "./tree_sitter_manager/grammar_manager"
+require "./tree_sitter_manager/grammar_batch_operations"

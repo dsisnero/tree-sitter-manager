@@ -1,6 +1,20 @@
 require "./spec_helper"
 
 describe "Language Registry from languages.toml" do
+  it "registers the discovery languages required by Chiasmus" do
+    {
+      "rust"       => "rs",
+      "csharp"     => "cs",
+      "typescript" => "ts",
+      "python"     => "py",
+      "ruby"       => "rb",
+      "go"         => "go",
+    }.each do |language, extension|
+      TreeSitterManager::LanguageRegistry.get_language_info(language).should_not be_nil
+      TreeSitterManager::LanguageRegistry.language_for_extension(extension).should eq(language)
+    end
+  end
+
   it "has git_url for crystal" do
     info = TreeSitterManager::LanguageRegistry.get_language_info("crystal")
     info.should_not be_nil
@@ -116,6 +130,26 @@ describe "LanguageRegistry ambiguous extensions" do
   it "resolves language for extension, preferring unambiguous match" do
     lang = TreeSitterManager::LanguageRegistry.language_for_extension("py")
     lang.should eq("python")
+  end
+
+  it "accepts extensions with a leading dot" do
+    TreeSitterManager::LanguageRegistry.language_for_extension(".cr").should eq("crystal")
+  end
+end
+
+describe "LanguageRegistry custom languages" do
+  it "registers and unregisters a custom language without recursive locking" do
+    TreeSitterManager::LanguageRegistry.clear_cache
+    info = TreeSitterManager::LanguageRegistry::LanguageInfo.new(
+      name: "demo",
+      package: "tree-sitter-demo",
+      extensions: [".demo"]
+    )
+
+    TreeSitterManager::LanguageRegistry.register_language(info)
+    TreeSitterManager::LanguageRegistry.language_for_extension("demo").should eq("demo")
+    TreeSitterManager::LanguageRegistry.unregister_language("demo")
+    TreeSitterManager::LanguageRegistry.language_for_extension("demo").should be_nil
   end
 end
 

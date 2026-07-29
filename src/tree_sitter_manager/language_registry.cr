@@ -73,9 +73,10 @@ module TreeSitterManager
     # Register a candidate language for an ambiguous extension (e.g. .m → objc, matlab).
     def register_ambiguous_extension(ext : String, language : String) : Nil
       @@mutex.synchronize do
-        @@ambiguous_extensions[ext.downcase] ||= [] of String
-        unless @@ambiguous_extensions[ext.downcase].includes?(language)
-          @@ambiguous_extensions[ext.downcase] << language
+        extension = normalize_extension(ext)
+        @@ambiguous_extensions[extension] ||= [] of String
+        unless @@ambiguous_extensions[extension].includes?(language)
+          @@ambiguous_extensions[extension] << language
         end
       end
     end
@@ -83,7 +84,7 @@ module TreeSitterManager
     # Return the list of candidate languages for an ambiguous extension.
     # Returns empty array if the extension is unambiguous or unknown.
     def ambiguous_for(ext : String) : Array(String)
-      @@ambiguous_extensions[ext.downcase]? || [] of String
+      @@ambiguous_extensions[normalize_extension(ext)]? || [] of String
     end
 
     # Language metadata structure
@@ -108,13 +109,19 @@ module TreeSitterManager
       return if @@initialized
 
       @@mutex.synchronize do
-        return if @@initialized
-
-        registry = build_registry
-        @@registry = registry
-        @@extension_map = build_extension_map(registry)
-        @@initialized = true
+        ensure_initialized_locked
       end
+    end
+
+    # The registry mutex is not re-entrant. Call this only while it is held
+    # when a caller needs to initialize and then update the registry atomically.
+    private def ensure_initialized_locked
+      return if @@initialized
+
+      registry = build_registry
+      @@registry = registry
+      @@extension_map = build_extension_map(registry)
+      @@initialized = true
     end
 
     private def registry : Hash(String, LanguageInfo)
@@ -213,7 +220,7 @@ module TreeSitterManager
     # For ambiguous extensions, returns the primary registered language.
     # Use LanguageDetection.resolve for content-based tiebreaking.
     def language_for_extension(ext : String) : String?
-      extension_map[ext.downcase]?
+      extension_map[normalize_extension(ext)]?
     end
 
     # Get all supported extensions (thread-safe)
@@ -283,13 +290,13 @@ module TreeSitterManager
     # Register a custom language (thread-safe, for runtime extension)
     def register_language(info : LanguageInfo)
       @@mutex.synchronize do
-        ensure_initialized
-        updated_registry = registry.dup
-        updated_extension_map = extension_map.dup
+        ensure_initialized_locked
+        updated_registry = @@registry.not_nil!.dup
+        updated_extension_map = @@extension_map.not_nil!.dup
 
         updated_registry[info.name] = info
         info.extensions.each do |ext|
-          updated_extension_map[ext.downcase] = info.name
+          updated_extension_map[normalize_extension(ext)] = info.name
         end
 
         @@registry = updated_registry
@@ -300,19 +307,23 @@ module TreeSitterManager
     # Unregister a language (thread-safe)
     def unregister_language(language : String)
       @@mutex.synchronize do
-        ensure_initialized
-        updated_registry = registry.dup
-        updated_extension_map = extension_map.dup
+        ensure_initialized_locked
+        updated_registry = @@registry.not_nil!.dup
+        updated_extension_map = @@extension_map.not_nil!.dup
 
         if info = updated_registry.delete(language)
           info.extensions.each do |ext|
-            updated_extension_map.delete(ext.downcase)
+            updated_extension_map.delete(normalize_extension(ext))
           end
         end
 
         @@registry = updated_registry
         @@extension_map = updated_extension_map
       end
+    end
+
+    private def normalize_extension(extension : String) : String
+      extension.downcase.lstrip('.')
     end
 
     # Get git URL for a language from the registry (for grammar installation)

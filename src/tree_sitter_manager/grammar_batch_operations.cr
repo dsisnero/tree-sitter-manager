@@ -2,6 +2,7 @@ require "wait_group"
 require "./grammar_manager"
 require "./grammar_metadata"
 require "./result"
+require "./directory_walker"
 
 module TreeSitterManager
   # Batch operations for managing multiple grammars with dependencies
@@ -335,7 +336,7 @@ module TreeSitterManager
             next
           end
 
-          languages = Dir.children(cache_dir).select do |name|
+          languages = DirectoryWalker.children(cache_dir).select do |name|
             Dir.exists?(File.join(cache_dir, name))
           end
 

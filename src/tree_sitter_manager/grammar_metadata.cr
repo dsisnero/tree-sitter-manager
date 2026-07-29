@@ -2,6 +2,7 @@ require "json"
 require "file_utils"
 require "process"
 require "time"
+require "dir-walk"
 
 module TreeSitterManager
   # Metadata for tracking grammar installations
@@ -108,17 +109,27 @@ module TreeSitterManager
       return false unless Dir.exists?(grammars_root)
 
       created = false
-      Dir.each_child(grammars_root) do |entry|
-        grammar_dir = File.join(grammars_root, entry)
-        next unless Dir.exists?(grammar_dir)
+      candidates = Channel(String).new
+      completed = Channel(Nil).new
 
-        # Skip if already has metadata
-        next if !overwrite && File.exists?(File.join(grammar_dir, METADATA_FILENAME))
-
-        if ensure_metadata(grammar_dir, overwrite: overwrite)
-          created = true
+      spawn do
+        begin
+          Dir::Walk.walk(nil, grammars_root) do |path, entry, error|
+            next if error || !entry || !entry.dir?
+            candidates.send(path) if grammar_directory?(path)
+          end
+        ensure
+          candidates.close
+          completed.send(nil)
         end
       end
+
+      while grammar_dir = candidates.receive?
+        next if !overwrite && File.exists?(File.join(grammar_dir, METADATA_FILENAME))
+
+        created = true if ensure_metadata(grammar_dir, overwrite: overwrite)
+      end
+      completed.receive
 
       created
     end
@@ -184,6 +195,21 @@ module TreeSitterManager
         installed_at: Time.utc,
         last_updated: Time.utc
       )
+    end
+
+    private def self.grammar_directory?(path : String) : Bool
+      name = File.basename(path)
+      return false unless name.starts_with?("tree-sitter-")
+
+      File.exists?(File.join(path, "grammar.js")) ||
+        File.exists?(File.join(path, "src", "grammar.json")) ||
+        File.exists?(File.join(path, "src", "parser.c")) ||
+        # Installed grammar packages and checked-out repositories can omit
+        # generated parser sources. Their package/repository metadata still
+        # makes them valid grammar roots and keeps the legacy manager API
+        # compatible with existing caches.
+        File.exists?(File.join(path, "package.json")) ||
+        Dir.exists?(File.join(path, ".git"))
     end
 
     private def self.git_origin_url(grammar_dir : String) : String?

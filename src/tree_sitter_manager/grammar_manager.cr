@@ -9,6 +9,7 @@ require "./language_registry"
 require "./grammar_metadata"
 require "./embedded_grammars"
 require "./xdg"
+require "./directory_walker"
 require "./timeout"
 require "./result"
 
@@ -226,12 +227,12 @@ module TreeSitterManager
 
           # Remove all .dylib/.so files
           ext = Platform.shared_library_extension
-          Dir.glob(File.join(cache_dir, "**", "*.#{ext}")).each do |lib_file|
+          DirectoryWalker.files(cache_dir, ".#{ext}").each do |lib_file|
             File.delete(lib_file)
           end
 
           # Remove empty directories
-          Dir.children(cache_dir).each do |dir|
+          DirectoryWalker.children(cache_dir).each do |dir|
             dir_path = File.join(cache_dir, dir)
             if Dir.exists?(dir_path) && Dir.empty?(dir_path)
               Dir.delete(dir_path)
@@ -345,7 +346,7 @@ module TreeSitterManager
       return unless cache_dir
       return if same_path?(cache_dir, legacy_dir)
 
-      Dir.children(legacy_dir).each do |entry|
+      DirectoryWalker.children(legacy_dir).each do |entry|
         source = File.join(legacy_dir, entry)
         dest = File.join(cache_dir, entry)
         next if File.exists?(dest) || Dir.exists?(dest)
@@ -1343,7 +1344,7 @@ module TreeSitterManager
       ext = Platform.shared_library_extension
 
       # Check for libtree-sitter-*.{so,dylib}
-      Dir.children(dir_path).any? do |filename|
+      DirectoryWalker.children(dir_path).any? do |filename|
         filename.starts_with?("libtree-sitter-") && filename.ends_with?(".#{ext}")
       end
     end

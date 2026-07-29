@@ -1,6 +1,12 @@
 # tree-sitter-manager
 
-CLI + TUI tool for managing tree-sitter grammars, queries, and syntax highlighting.
+Reusable Crystal runtime for Tree-sitter grammar discovery, installation,
+loading, parsing, and cache management.
+
+The command-line interface, TUI, highlighting, themes, and renderers live in
+the companion `tree-sitter-manager-cli` application. Keeping them separate
+means applications such as Chiasmus can use grammar management without pulling
+in terminal UI dependencies.
 
 [![Crystal](https://img.shields.io/badge/crystal-%3E%3D1.19.1-1f1f1f)](https://crystal-lang.org)
 
@@ -18,7 +24,22 @@ Run `shards install`.
 
 ## Usage
 
-### CLI
+### Library
+
+```crystal
+require "tree-sitter-manager"
+
+TreeSitterManager::GrammarManager.init
+result = TreeSitterManager::GrammarManager.instance.ensure_grammar_async("crystal").receive
+```
+
+The public entry point intentionally exposes only the reusable runtime. It has
+no CLI, TUI, theme, renderer, or highlighting dependencies.
+
+### CLI and TUI
+
+Install or develop the companion `tree-sitter-manager-cli` application for the
+interactive commands and syntax-highlighting interface.
 
 ```bash
 # Highlight a file
@@ -49,15 +70,14 @@ tsm-tui file.cr      # Opens file directly
 
 Key bindings: `q` quit, `t/T` cycle theme, `/` search theme, `↑/↓` scroll, `Ctrl+o` open file, `?` toggle help.
 
-### Configuration
+### Runtime storage
 
-`~/.config/chiasmus/config.toml`:
+The core uses standard XDG locations under `tree-sitter-manager`, for example
+`~/.cache/tree-sitter-manager/grammars`.
 
-```toml
-theme = "nord::nord"
-format = "terminal"
-auto_install = true
-```
+The CLI application owns its presentation configuration.
+
+The companion CLI owns its own presentation configuration and query assets.
 
 ## Documentation
 
@@ -73,7 +93,7 @@ auto_install = true
 
 ```bash
 shards install
-shards build          # Build both binaries
+shards build          # Build the core verification target
 crystal spec          # Run tests
 crystal tool format   # Format code
 ameba src spec bin    # Lint

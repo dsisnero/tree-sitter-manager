@@ -1,32 +1,5 @@
-require "./tree_sitter_manager/platform"
-require "./tree_sitter_manager/result"
-require "./tree_sitter_manager/rsexpr"
-require "./tree_sitter_manager/highlight_keys"
-require "./tree_sitter_manager/style"
-require "./tree_sitter_manager/theme"
-require "./tree_sitter_manager/themes"
-require "./tree_sitter_manager/renderers"
-require "./tree_sitter_manager/source_highlighter"
-require "./tree_sitter_manager/config"
-require "./tree_sitter_manager/cli"
-
-# Run CLI when executed as a binary or with explicit args
-TreeSitterManager::CLI::Main.run if ARGV.size > 0 && !ENV["TREE_SITTER_MANAGER_NO_AUTO_RUN"]?
-require "./tree_sitter_manager/lua_pattern"
-require "./tree_sitter_manager/query_preprocessor"
-require "./tree_sitter_manager/highlight_configuration"
-require "./tree_sitter_manager/query_manager"
-require "./tree_sitter_manager/timeout"
-require "./tree_sitter_manager/xdg"
-require "./tree_sitter_manager/language_registry"
-require "./tree_sitter_manager/language_detection"
-require "./tree_sitter_manager/embedded_grammars"
-require "./tree_sitter_manager/language_loader"
-require "./tree_sitter_manager/grammar_loader"
-require "./tree_sitter_manager/parser_pack"
-require "./tree_sitter_manager/download_manager"
-require "./tree_sitter_manager/tui"
-require "./tree_sitter_manager/grammar_metadata"
-require "./tree_sitter_manager/grammar_operations"
-require "./tree_sitter_manager/grammar_manager"
-require "./tree_sitter_manager/grammar_batch_operations"
+# Public entry point for the reusable grammar and parser runtime.
+#
+# CLI, TUI, highlighting, themes, and rendering live in the separate
+# tree-sitter-manager-cli application.
+require "./tree_sitter_manager"

@@ -11,18 +11,10 @@ license: MIT
 targets:
   tree-sitter-manager:
     main: src/tree-sitter-manager.cr
-  tsm-tui:
-    main: src/tsm-tui.cr
 
 dependencies:
+  dir-walk:
+    github: dsisnero/dir-walk
   tree_sitter:
     github: dsisnero/crystal-tree-sitter
     branch: fix/windows-uint16-portability
-  lipgloss:
-    github: dsisnero/lipgloss
-  bubbles:
-    github: dsisnero/bubbles
-  clip:
-    github: erdnaxeli/clip
-  toml:
-    github: crystal-community/toml.cr

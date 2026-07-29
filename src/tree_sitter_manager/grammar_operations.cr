@@ -1,6 +1,7 @@
 require "file_utils"
 require "process"
 require "json"
+require "dir-walk"
 
 module TreeSitterManager
   # Non-blocking grammar operations
@@ -147,12 +148,9 @@ module TreeSitterManager
       channel = Channel(Tuple(Bool, String?)).new
 
       spawn do
-        original_dir = Dir.current
         begin
-          Dir.cd(source_dir)
-
-          # Find source files
-          src_files = Dir.glob("src/*.c")
+          src_dir = File.join(source_dir, "src")
+          src_files = c_source_files(src_dir)
           if src_files.empty?
             channel.send({false, "No C source files found in src/"})
             next
@@ -160,12 +158,12 @@ module TreeSitterManager
 
           # Build command
           ext = Platform.shared_library_extension
-          output_file = "libtree-sitter-#{language}.#{ext}"
+          output_file = File.join(source_dir, "libtree-sitter-#{language}.#{ext}")
 
-          build_cmd = "cc -shared -fPIC -I./src -o #{output_file} #{src_files.join(" ")}"
+          args = ["-shared", "-fPIC", "-I#{src_dir}", "-o", output_file]
+          args.concat(src_files)
 
-          # Compile
-          result_channel = run_command_async("sh", ["-c", build_cmd])
+          result_channel = run_command_async("cc", args)
           success, _, error = result_channel.receive
 
           if success
@@ -175,12 +173,38 @@ module TreeSitterManager
           end
         rescue ex
           channel.send({false, ex.message})
-        ensure
-          Dir.cd(original_dir)
         end
       end
 
       channel
+    end
+
+    private def c_source_files(src_dir : String) : Array(String)
+      return [] of String unless Dir.exists?(src_dir)
+
+      sources = [] of String
+      discovered = Channel(String).new
+      completed = Channel(Nil).new(1)
+
+      spawn do
+        begin
+          config = Dir::Walk::Config.new(num_workers: 1)
+          Dir::Walk.walk(config, src_dir) do |path, entry, error|
+            next if error || !entry || !entry.file?
+            discovered.send(path) if path.ends_with?(".c")
+          end
+        ensure
+          discovered.close
+          completed.send(nil)
+        end
+      end
+
+      while path = discovered.receive?
+        sources << path
+      end
+      completed.receive
+
+      sources.sort!
     end
 
     # Copy files asynchronously
