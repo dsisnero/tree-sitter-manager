@@ -238,35 +238,5 @@ module TreeSitterManager
 
       channel
     end
-
-    # Check if file exists asynchronously
-    def file_exists_async(path : String) : Channel(Bool)
-      channel = Channel(Bool).new
-
-      spawn do
-        begin
-          channel.send(File.exists?(path))
-        rescue
-          channel.send(false)
-        end
-      end
-
-      channel
-    end
-
-    # Check if directory exists asynchronously
-    def dir_exists_async(path : String) : Channel(Bool)
-      channel = Channel(Bool).new
-
-      spawn do
-        begin
-          channel.send(Dir.exists?(path))
-        rescue
-          channel.send(false)
-        end
-      end
-
-      channel
-    end
   end
 end

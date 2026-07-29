@@ -84,10 +84,7 @@ module TreeSitterManager
 
           # Check our cache
           if cache_dir = @@cache_dir
-            available = grammar_cache_paths(language, cache_dir).any? do |so_path|
-              exists_channel = GrammarOperations.file_exists_async(so_path)
-              Timeout.with_timeout_async(5_000, exists_channel) == true
-            end
+            available = grammar_cache_paths(language, cache_dir).any? { |so_path| File.exists?(so_path) }
 
             if available
               channel.send(BoolResult.success)
@@ -123,10 +120,7 @@ module TreeSitterManager
             ext = Platform.shared_library_extension
             so_path = path.join("libtree-sitter-#{language}.#{ext}")
 
-            exists_channel = GrammarOperations.file_exists_async(so_path.to_s)
-            exists_result = Timeout.with_timeout_async(5_000, exists_channel)
-
-            if exists_result == true
+            if File.exists?(so_path)
               channel.send(StringResult.success(so_path.to_s))
               next
             end
@@ -134,10 +128,7 @@ module TreeSitterManager
 
           # Check cache
           if cache_dir = @@cache_dir
-            found_path = grammar_cache_paths(language, cache_dir).find do |grammar_path|
-              exists_channel = GrammarOperations.file_exists_async(grammar_path)
-              Timeout.with_timeout_async(5_000, exists_channel) == true
-            end
+            found_path = grammar_cache_paths(language, cache_dir).find { |grammar_path| File.exists?(grammar_path) }
 
             if found_path
               channel.send(StringResult.success(found_path))
