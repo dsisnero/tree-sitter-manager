@@ -1,5 +1,6 @@
 require "tree_sitter"
 require "dir-walk"
+require "./platform"
 require "./xdg"
 require "./directory_walker"
 
@@ -45,10 +46,9 @@ module TreeSitterManager
       # Resolve C symbol name (e.g. csharp → c_sharp)
       symbol_name = LanguageRegistry.c_symbol_for(language)
 
-      lib_name = "libtree-sitter-#{symbol_name}"
       search_paths = grammar_search_paths
-      ext = shared_library_extension
-      standard_library_name = "#{lib_name}.#{ext}"
+      ext = Platform.shared_library_extension
+      standard_library_name = Platform.lib_name(symbol_name)
 
       search_paths.each do |dir|
         next unless Dir.exists?(dir)
@@ -65,7 +65,7 @@ module TreeSitterManager
           next unless Dir.exists?(candidate_dir)
 
           # Standard name: libtree-sitter-{symbol}.{ext}
-          lib_path = File.join(candidate_dir, "#{lib_name}.#{ext}")
+          lib_path = File.join(candidate_dir, standard_library_name)
           return lib_path if File.exists?(lib_path)
 
           # Tree-sitter CLI default: {lang}.{ext}
@@ -84,7 +84,7 @@ module TreeSitterManager
           DirectoryWalker.children(candidate_dir).each do |sub|
             sub_path = File.join(candidate_dir, sub)
             next unless Dir.exists?(sub_path)
-            sub_lib = File.join(sub_path, "#{lib_name}.#{ext}")
+            sub_lib = File.join(sub_path, standard_library_name)
             return sub_lib if File.exists?(sub_lib)
           end
         end
@@ -171,16 +171,6 @@ module TreeSitterManager
         LibC.GetProcAddress(handle, name).as(Void*)
       {% else %}
         LibC.dlsym(handle, name)
-      {% end %}
-    end
-
-    private def shared_library_extension : String
-      {% if flag?(:darwin) %}
-        "dylib"
-      {% elsif flag?(:win32) %}
-        "dll"
-      {% else %}
-        "so"
       {% end %}
     end
 

@@ -1,5 +1,6 @@
 require "file_utils"
 require "base64"
+require "./cache_dir"
 
 module TreeSitterManager
   # Module for embedding grammar libraries into the binary and extracting them at runtime
@@ -21,11 +22,13 @@ module TreeSitterManager
     ]
 
     # Extract all embedded grammars to cache directory
-    def extract_all_to_cache(cache_dir : String) : Bool
-      Dir.mkdir_p(cache_dir)
+    def extract_all_to_cache(cache_dir : String | Path) : Bool
+      extract_all_to_cache(CacheDir.new(cache_dir))
+    end
 
+    def extract_all_to_cache(cache : CacheDir) : Bool
       EMBEDDED_LANGUAGES.each do |language|
-        unless extract_to_cache(language, cache_dir)
+        unless extract_to_cache(language, cache)
           return false
         end
       end
@@ -34,24 +37,16 @@ module TreeSitterManager
     end
 
     # Extract a specific grammar to cache directory
-    def extract_to_cache(language : String, cache_dir : String) : Bool
+    def extract_to_cache(language : String, cache_dir : String | Path) : Bool
+      extract_to_cache(language, CacheDir.new(cache_dir))
+    end
+
+    def extract_to_cache(language : String, cache : CacheDir) : Bool
       # Get the embedded grammar data
       grammar_data = get_embedded_grammar(language)
       return false unless grammar_data
 
-      # Determine library name based on platform
-      ext = Platform.shared_library_extension
-      lib_name = "libtree-sitter-#{language}.#{ext}"
-
-      # Create language directory in cache
-      lang_cache_dir = File.join(cache_dir, language)
-      Dir.mkdir_p(lang_cache_dir)
-
-      # Write the library file
-      lib_path = File.join(lang_cache_dir, lib_name)
-      File.write(lib_path, grammar_data)
-
-      # Set executable permissions
+      lib_path = cache.add_library(language, grammar_data)
       File.chmod(lib_path, 0o755)
 
       true
@@ -89,8 +84,7 @@ module TreeSitterManager
     private def find_vendor_grammar(language : String) : String?
       vendor_dir = File.expand_path("../../../grammars", __DIR__)
 
-      ext = Platform.shared_library_extension
-      lib_name = "libtree-sitter-#{language}.#{ext}"
+      lib_name = Platform.lib_name(language)
 
       # Check in language-specific directory
       paths = [

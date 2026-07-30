@@ -157,8 +157,7 @@ module TreeSitterManager
           end
 
           # Build command
-          ext = Platform.shared_library_extension
-          output_file = File.join(source_dir, "libtree-sitter-#{language}.#{ext}")
+          output_file = File.join(source_dir, Platform.lib_name(language))
 
           args = ["-shared", "-fPIC", "-I#{src_dir}", "-o", output_file]
           args.concat(src_files)

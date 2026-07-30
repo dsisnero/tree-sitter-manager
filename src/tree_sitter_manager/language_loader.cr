@@ -69,18 +69,12 @@ module TreeSitterManager
     end
 
     private def load_dylib(symbol_name : String, language_path : Path)
-      file_extension = {% if flag?(:darwin) %}
-                         "dylib"
-                       {% else %}
-                         "so"
-                       {% end %}
-
       # Try exact name first, then without prefix
-      so_path = language_path.join("libtree-sitter-#{symbol_name}.#{file_extension}")
+      so_path = language_path.join(Platform.lib_name(symbol_name))
       unless File.exists?(so_path.to_s)
         # C# case: file is libtree-sitter-csharp.dylib but symbol is c_sharp
         alt_name = symbol_name == "c_sharp" ? "csharp" : symbol_name
-        so_path = language_path.join("libtree-sitter-#{alt_name}.#{file_extension}")
+        so_path = language_path.join(Platform.lib_name(alt_name))
       end
 
       raise "Missing grammar: #{so_path}" unless File.exists?(so_path.to_s)

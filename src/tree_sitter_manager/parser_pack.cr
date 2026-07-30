@@ -1,5 +1,6 @@
 require "digest/sha256"
 require "json"
+require "./cache_dir"
 require "./language_registry"
 
 module TreeSitterManager
@@ -66,22 +67,14 @@ module TreeSitterManager
         {language, source}
       end
 
+      cache = CacheDir.new(cache_dir)
+
       # Validate every file before creating or changing the cache.
       verified.each do |language, source|
-        destination_dir = File.join(cache_dir, language)
-        library_name = Platform.grammar_library_name(LanguageRegistry.c_symbol_for(language))
-        destination = File.join(destination_dir, library_name)
-        Dir.mkdir_p(destination_dir)
-        temporary = "#{destination}.tmp-#{Random::Secure.hex(8)}"
-        begin
-          File.copy(source, temporary)
-          File.rename(temporary, destination)
-        ensure
-          File.delete(temporary) if File.exists?(temporary)
-        end
+        cache.add_library(language, source)
       end
 
-      GrammarLoader.register_grammar_directory(cache_dir)
+      GrammarLoader.register_grammar_directory(cache.path)
       verified.map(&.[0])
     end
 

@@ -6,8 +6,7 @@ describe TreeSitterManager::GrammarLoader do
     root = File.join(Dir.tempdir, "tsm-loader-#{Random.rand(1_000_000)}")
     language = "loader-fixture"
     symbol = TreeSitterManager::LanguageRegistry.c_symbol_for(language)
-    extension = TreeSitterManager::Platform.shared_library_extension
-    library = File.join(root, "libtree-sitter-#{symbol}.#{extension}")
+    library = File.join(root, TreeSitterManager::Platform.lib_name(symbol))
     previous_manager_root = ENV["TREE_SITTER_MANAGER_GRAMMAR_DIR"]?
     previous_chiasmus_root = ENV["CHIASMUS_GRAMMAR_DIR"]?
 
@@ -39,9 +38,8 @@ describe TreeSitterManager::GrammarLoader do
     legacy_root = File.join(Dir.tempdir, "tsm-loader-legacy-#{Random.rand(1_000_000)}")
     language = "loader-precedence"
     symbol = TreeSitterManager::LanguageRegistry.c_symbol_for(language)
-    extension = TreeSitterManager::Platform.shared_library_extension
-    manager_library = File.join(manager_root, "libtree-sitter-#{symbol}.#{extension}")
-    legacy_library = File.join(legacy_root, "libtree-sitter-#{symbol}.#{extension}")
+    manager_library = File.join(manager_root, TreeSitterManager::Platform.lib_name(symbol))
+    legacy_library = File.join(legacy_root, TreeSitterManager::Platform.lib_name(symbol))
     previous_manager_root = ENV["TREE_SITTER_MANAGER_GRAMMAR_DIR"]?
     previous_chiasmus_root = ENV["CHIASMUS_GRAMMAR_DIR"]?
 
@@ -75,9 +73,8 @@ describe TreeSitterManager::GrammarLoader do
     root = File.join(Dir.tempdir, "tsm-loader-nested-#{Random.rand(1_000_000)}")
     language = "loader-nested"
     symbol = TreeSitterManager::LanguageRegistry.c_symbol_for(language)
-    extension = TreeSitterManager::Platform.shared_library_extension
     nested = File.join(root, "releases", "current", "grammars")
-    library = File.join(nested, "libtree-sitter-#{symbol}.#{extension}")
+    library = File.join(nested, TreeSitterManager::Platform.lib_name(symbol))
     previous_manager_root = ENV["TREE_SITTER_MANAGER_GRAMMAR_DIR"]?
     previous_chiasmus_root = ENV["CHIASMUS_GRAMMAR_DIR"]?
 

@@ -32,9 +32,15 @@ module TreeSitterManager
       {% end %}
     end
 
-    # Full library filename: libtree-sitter-{lang}.{ext}
+    # Full grammar library filename: libtree-sitter-{language}.{extension}.
+    def lib_name(language : String) : String
+      ext = shared_library_extension
+      "libtree-sitter-#{language}.#{ext}"
+    end
+
+    # Compatibility alias for callers using the original public API.
     def grammar_library_name(language : String) : String
-      "#{library_prefix}tree-sitter-#{language}.#{shared_library_extension}"
+      lib_name(language)
     end
 
     # Crystal linker flag for dynamic loading.

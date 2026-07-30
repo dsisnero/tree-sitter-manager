@@ -17,8 +17,7 @@ describe "Grammar install pipeline" do
     Dir.exists?(crystal_dir).should be_true, "No crystal dir in #{cache}"
 
     # Verify the .so exists
-    ext = TreeSitterManager::Platform.shared_library_extension
-    lib_path = File.join(crystal_dir, "libtree-sitter-crystal.#{ext}")
+    lib_path = File.join(crystal_dir, TreeSitterManager::Platform.lib_name("crystal"))
     File.exists?(lib_path).should be_true, "No library at #{lib_path}"
 
     # Try loading

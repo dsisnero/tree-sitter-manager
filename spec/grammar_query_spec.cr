@@ -6,8 +6,7 @@ describe TreeSitterManager::GrammarQuery do
     root = File.join(Dir.tempdir, "tsm-query-#{Random.rand(1_000_000)}")
     language = "query-fixture"
     symbol = TreeSitterManager::LanguageRegistry.c_symbol_for(language)
-    extension = TreeSitterManager::Platform.shared_library_extension
-    library = File.join(root, "libtree-sitter-#{symbol}.#{extension}")
+    library = File.join(root, TreeSitterManager::Platform.lib_name(symbol))
 
     begin
       Dir.mkdir_p(root)
@@ -26,8 +25,7 @@ describe TreeSitterManager::GrammarQuery do
     root = File.join(Dir.tempdir, "tsm-query-async-#{Random.rand(1_000_000)}")
     language = "query-async-fixture"
     symbol = TreeSitterManager::LanguageRegistry.c_symbol_for(language)
-    extension = TreeSitterManager::Platform.shared_library_extension
-    library = File.join(root, "libtree-sitter-#{symbol}.#{extension}")
+    library = File.join(root, TreeSitterManager::Platform.lib_name(symbol))
 
     begin
       Dir.mkdir_p(root)

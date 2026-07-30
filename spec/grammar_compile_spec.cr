@@ -11,8 +11,7 @@ describe TreeSitterManager::GrammarManager, "#compile_sources" do
     File.write(File.join(src_dir, "parser.c"), "int tree_sitter_test(void) { return 42; }\n")
 
     begin
-      ext = TreeSitterManager::Platform.shared_library_extension
-      output_path = File.join(tmpdir, "libtree-sitter-test.#{ext}")
+      output_path = File.join(tmpdir, TreeSitterManager::Platform.lib_name("test"))
 
       ok, err = TreeSitterManager::GrammarManager.compile_sources(tmpdir, "test", output_path)
       ok.should be_true, "compile failed: #{err}"
@@ -24,5 +23,12 @@ describe TreeSitterManager::GrammarManager, "#compile_sources" do
 
   it "responds to compile_sources" do
     TreeSitterManager::GrammarManager.responds_to?(:compile_sources).should be_true
+  end
+
+  it "builds the canonical grammar library filename" do
+    extension = TreeSitterManager::Platform.shared_library_extension
+
+    TreeSitterManager::Platform.lib_name("python").should eq("libtree-sitter-python.#{extension}")
+    TreeSitterManager::Platform.grammar_library_name("python").should eq("libtree-sitter-python.#{extension}")
   end
 end
