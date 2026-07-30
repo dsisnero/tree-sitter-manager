@@ -528,9 +528,20 @@ module TreeSitterManager
 
           case metadata.type
           when "git", "tree-sitter", "cc"
-            channel.send(VersionChecker::Git.new.needs_update?(metadata.url, metadata.commit_hash))
+            checker = VersionChecker::Git.new
+            git_ref = metadata.git_ref
+            unless git_ref
+              resolved_ref = checker.default_ref_for(metadata.url)
+              unless resolved_ref.success?
+                channel.send(BoolResult.failure(resolved_ref.error || "Failed to resolve git default ref", resolved_ref.details))
+                next
+              end
+              git_ref = resolved_ref.value
+            end
+
+            channel.send(VersionChecker.needs_update?(VersionChecker::GitVersion.new(metadata.url, metadata.commit_hash, git_ref || "")))
           when "npm"
-            channel.send(VersionChecker::Npm.new.needs_update?(metadata.package_name, metadata.version))
+            channel.send(VersionChecker.needs_update?(VersionChecker::NpmVersion.new(metadata.package_name, metadata.version)))
           when "local"
             # Local grammars don't have updates
             channel.send(BoolResult.new(value: false))

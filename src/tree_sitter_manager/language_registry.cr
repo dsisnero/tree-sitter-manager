@@ -334,6 +334,13 @@ module TreeSitterManager
       info.git_url.empty? ? nil : info.git_url
     end
 
+    # Return the exact grammar commit pinned by the generated registry.
+    def git_revision_for(language : String) : String?
+      info = get_language_info(language)
+      return nil unless info
+      info.git_rev.empty? ? nil : info.git_rev
+    end
+
     # Get FFI function name for a language (for dlsym loading)
     # Uses c_symbol_for to handle naming overrides.
     def ffi_func_for(language : String) : String?

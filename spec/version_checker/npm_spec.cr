@@ -12,8 +12,8 @@ describe TreeSitterManager::VersionChecker::Npm do
       File.chmod(command, 0o755)
 
       checker = TreeSitterManager::VersionChecker::Npm.new(npm_command: command)
-      checker.needs_update?("fixture-package", "1.0.0").value.should be_true
-      checker.needs_update?("fixture-package", "2.0.0").value.should be_false
+      checker.needs_update?(TreeSitterManager::VersionChecker::NpmVersion.new("fixture-package", "1.0.0")).value.should be_true
+      checker.needs_update?(TreeSitterManager::VersionChecker::NpmVersion.new("fixture-package", "2.0.0")).value.should be_false
     ensure
       FileUtils.rm_rf(root) if Dir.exists?(root)
     end

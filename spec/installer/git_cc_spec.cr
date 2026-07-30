@@ -19,11 +19,16 @@ describe TreeSitterManager::Installer::GitCc do
       Process.run("git", ["config", "user.name", "Fixture"], chdir: repository).success?.should be_true
       Process.run("git", ["add", "."], chdir: repository).success?.should be_true
       Process.run("git", ["commit", "-m", "fixture grammar"], chdir: repository).success?.should be_true
+      pinned = IO::Memory.new
+      Process.run("git", ["rev-parse", "HEAD"], chdir: repository, output: pinned).success?.should be_true
+      File.write(File.join(repository, "README.md"), "newer default branch revision\n")
+      Process.run("git", ["add", "."], chdir: repository).success?.should be_true
+      Process.run("git", ["commit", "-m", "advance fixture grammar"], chdir: repository).success?.should be_true
 
       cache = TreeSitterManager::CacheDir.new(cache_root)
       result = TreeSitterManager::Installer::Coordinator.new(
         cache,
-        [TreeSitterManager::Installer::GitCc.new(repository_url: repository)]
+        [TreeSitterManager::Installer::GitCc.new(repository_url: repository, revision: pinned.to_s.strip)]
       ).install("fixture")
 
       result.success?.should be_true
@@ -32,7 +37,8 @@ describe TreeSitterManager::Installer::GitCc do
       metadata.should_not be_nil
       metadata.not_nil!.type.should eq("cc")
       metadata.not_nil!.url.should eq(repository)
-      metadata.not_nil!.commit_hash.should_not be_nil
+      metadata.not_nil!.commit_hash.should eq(pinned.to_s.strip)
+      metadata.not_nil!.git_ref.not_nil!.should start_with("refs/heads/")
     ensure
       FileUtils.rm_rf(root) if Dir.exists?(root)
     end

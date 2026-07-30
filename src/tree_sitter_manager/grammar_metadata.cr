@@ -18,6 +18,10 @@ module TreeSitterManager
     # Git commit hash (for git type)
     property commit_hash : String? = nil
 
+    # Named remote ref used to advance a pinned Git grammar (for example,
+    # `refs/heads/main`). Older manifests omit this and are resolved lazily.
+    property git_ref : String? = nil
+
     # Package version (for npm type)
     property version : String? = nil
 
@@ -39,6 +43,7 @@ module TreeSitterManager
       @url : String = "",
       @type : String = "local",
       @commit_hash : String? = nil,
+      @git_ref : String? = nil,
       @version : String? = nil,
       @package_name : String = "",
       @language : String = "",
