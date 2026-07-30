@@ -100,6 +100,8 @@ module TreeSitterManager
       git_url : String = "",
       git_rev : String = "",
       git_branch : String? = nil,
+      directory : String? = nil,
+      generate : Bool = false,
       ffi_func : String = "",
       parser_path : String = "",
       c_symbol : String? = nil,
@@ -148,6 +150,8 @@ module TreeSitterManager
           git_url: entry["git_url"],
           git_rev: entry["git_rev"],
           git_branch: entry["git_branch"],
+          directory: entry["directory"],
+          generate: entry["generate"],
           ffi_func: entry["ffi_func"],
           c_symbol: entry["c_symbol"]?,
           abi_version: (v = entry["abi_version"]; v ? v.to_u32 : nil),
@@ -348,6 +352,14 @@ module TreeSitterManager
 
     def git_branch_for(language : String) : String?
       get_language_info(language).try(&.git_branch)
+    end
+
+    def grammar_directory_for(language : String) : String?
+      get_language_info(language).try(&.directory)
+    end
+
+    def generate_for(language : String) : Bool
+      get_language_info(language).try(&.generate) || false
     end
 
     # Get FFI function name for a language (for dlsym loading)

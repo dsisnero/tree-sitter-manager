@@ -26,10 +26,11 @@ module TreeSitterManager
           return BoolResult.failure("git checkout pinned revision failed", {"language" => language, "revision" => revision}) unless checkout.success?
         end
 
-        generate = Process.run(@tree_sitter_command, ["generate"], chdir: temporary_directory)
+        source_directory = source_directory_for(language, temporary_directory)
+        generate = Process.run(@tree_sitter_command, ["generate"], chdir: source_directory)
         return BoolResult.failure("tree-sitter generate failed", {"language" => language}) unless generate.success?
 
-        build = Process.run(@tree_sitter_command, ["build"], chdir: temporary_directory)
+        build = Process.run(@tree_sitter_command, ["build"], chdir: source_directory)
         return BoolResult.failure("tree-sitter build failed", {"language" => language}) unless build.success?
 
         BoolResult.success
@@ -53,6 +54,11 @@ module TreeSitterManager
 
       private def branch_for(language : String) : String?
         @branch || (@repository_url.nil? ? LanguageRegistry.git_branch_for(language) : nil)
+      end
+
+      private def source_directory_for(language : String, repository_directory : String) : String
+        directory = LanguageRegistry.grammar_directory_for(language)
+        directory ? File.join(repository_directory, directory) : repository_directory
       end
     end
   end

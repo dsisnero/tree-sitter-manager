@@ -71,4 +71,33 @@ describe TreeSitterManager::Installer::GitCc do
       FileUtils.rm_rf(root) if Dir.exists?(root)
     end
   end
+
+  it "builds a language-pack grammar from its configured repository subdirectory" do
+    root = File.join(Dir.tempdir, "tsm-git-cc-markdown-#{Random::Secure.hex(8)}")
+    repository = File.join(root, "fixture-repository")
+    grammar = File.join(repository, "tree-sitter-markdown")
+    command = File.join(root, "fake-tree-sitter")
+    cache_root = File.join(root, "cache")
+
+    begin
+      Dir.mkdir_p(grammar)
+      File.write(File.join(grammar, "grammar.js"), "module.exports = grammar({name: 'markdown'});\n")
+      Process.run("git", ["init"], chdir: repository).success?.should be_true
+      Process.run("git", ["config", "user.email", "fixture@example.test"], chdir: repository).success?.should be_true
+      Process.run("git", ["config", "user.name", "Fixture"], chdir: repository).success?.should be_true
+      Process.run("git", ["add", "."], chdir: repository).success?.should be_true
+      Process.run("git", ["commit", "-m", "nested markdown grammar"], chdir: repository).success?.should be_true
+      File.write(command, "#!/bin/sh\nmkdir -p src\nprintf 'void *tree_sitter_markdown(void) { return 0; }\\n' > src/parser.c\n")
+      File.chmod(command, 0o755)
+
+      result = TreeSitterManager::Installer::Coordinator.new(
+        TreeSitterManager::CacheDir.new(cache_root),
+        [TreeSitterManager::Installer::GitCc.new(repository_url: repository, tree_sitter_command: command)]
+      ).install("markdown")
+
+      result.success?.should be_true
+    ensure
+      FileUtils.rm_rf(root) if Dir.exists?(root)
+    end
+  end
 end
