@@ -527,12 +527,10 @@ module TreeSitterManager
           end
 
           case metadata.type
-          when "git", "tree-sitter"
-            result = check_git_updates_async(metadata)
-            channel.send(result)
+          when "git", "tree-sitter", "cc"
+            channel.send(VersionChecker::Git.new.needs_update?(metadata.url, metadata.commit_hash))
           when "npm"
-            result = check_npm_updates_async(metadata)
-            channel.send(result)
+            channel.send(VersionChecker::Npm.new.needs_update?(metadata.package_name, metadata.version))
           when "local"
             # Local grammars don't have updates
             channel.send(BoolResult.new(value: false))
@@ -624,101 +622,6 @@ module TreeSitterManager
       return dir_path if Dir.exists?(dir_path)
 
       nil
-    end
-
-    private def check_git_updates_async(metadata : GrammarMetadata) : BoolResult
-      return BoolResult.failure("No URL for git grammar", {"language" => metadata.language}) if metadata.url.empty?
-
-      begin
-        # Create a temporary directory to clone into
-        temp_dir = File.join(Dir.tempdir, "chiasmus-git-check-#{Random.rand(1_000_000)}")
-        Dir.mkdir_p(temp_dir)
-
-        begin
-          # Clone the repository (shallow, single branch)
-          clone_result = Process.run("git", ["clone", "--depth", "1", "--single-branch", metadata.url, temp_dir],
-            output: Process::Redirect::Close, error: Process::Redirect::Close)
-
-          unless clone_result.success?
-            return BoolResult.failure("Failed to clone repository", {"language" => metadata.language, "url" => metadata.url})
-          end
-
-          # Get the latest commit hash
-          commit_output = IO::Memory.new
-          commit_result = Process.run("git", ["rev-parse", "HEAD"], chdir: temp_dir, output: commit_output)
-
-          unless commit_result.success?
-            return BoolResult.failure("Failed to get latest commit", {"language" => metadata.language})
-          end
-
-          latest_commit = commit_output.to_s.strip
-
-          # Compare with local commit
-          current_commit = metadata.commit_hash
-          if current_commit && latest_commit != current_commit
-            BoolResult.new(value: true, details: {
-              "language"       => metadata.language,
-              "current_commit" => current_commit,
-              "latest_commit"  => latest_commit,
-            })
-          else
-            BoolResult.new(value: false, details: {"language" => metadata.language})
-          end
-        ensure
-          # Clean up temp directory
-          FileUtils.rm_rf(temp_dir) if Dir.exists?(temp_dir)
-        end
-      rescue ex
-        BoolResult.failure("Error checking git updates: #{ex.message}", {
-          "language"  => metadata.language,
-          "exception" => ex.class.to_s,
-        })
-      end
-    end
-
-    private def check_npm_updates_async(metadata : GrammarMetadata) : BoolResult
-      return BoolResult.failure("No package name for npm grammar", {"language" => metadata.language}) if metadata.package_name.empty?
-
-      begin
-        # Check npm registry for latest version
-        # Use npm view command
-        npm_output = IO::Memory.new
-        npm_view_result = Process.run("npm", ["view", metadata.package_name, "version"], output: npm_output)
-
-        unless npm_view_result.success?
-          # Try with --json flag
-          npm_output = IO::Memory.new
-          npm_view_result = Process.run("npm", ["view", metadata.package_name, "version", "--json"], output: npm_output)
-
-          unless npm_view_result.success?
-            return BoolResult.failure("Failed to check npm registry", {
-              "language" => metadata.language,
-              "package"  => metadata.package_name,
-            })
-          end
-        end
-
-        latest_version = npm_output.to_s.strip
-        # Remove quotes if JSON response
-        latest_version = latest_version.gsub(/^"|"$/, "")
-
-        # Compare with local version
-        current_version = metadata.version
-        if current_version && latest_version != current_version
-          BoolResult.new(value: true, details: {
-            "language"        => metadata.language,
-            "current_version" => current_version,
-            "latest_version"  => latest_version,
-          })
-        else
-          BoolResult.new(value: false, details: {"language" => metadata.language})
-        end
-      rescue ex
-        BoolResult.failure("Error checking npm updates: #{ex.message}", {
-          "language"  => metadata.language,
-          "exception" => ex.class.to_s,
-        })
-      end
     end
 
     # Check if a directory contains a grammar library

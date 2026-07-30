@@ -39,4 +39,25 @@ describe TreeSitterManager::GrammarManager do
       FileUtils.rm_rf(root) if Dir.exists?(root)
     end
   end
+
+  it "checks cc installer manifests through the git update path" do
+    root = File.join(Dir.tempdir, "tsm-cc-update-#{Random::Secure.hex(8)}")
+
+    begin
+      TreeSitterManager::GrammarManager.test_reset(root)
+      TreeSitterManager::GrammarManager.init(root)
+      language_dir = File.join(root, "fixture")
+      TreeSitterManager::GrammarMetadataStore.save(language_dir, TreeSitterManager::GrammarMetadata.new(
+        language: "fixture",
+        type: "cc",
+        package_name: "tree-sitter-fixture",
+      )).should be_true
+
+      result = TreeSitterManager::GrammarManager.instance.update_check_async("fixture").receive
+      result.error.should eq("No URL for git grammar")
+    ensure
+      TreeSitterManager::GrammarManager.test_reset
+      FileUtils.rm_rf(root) if Dir.exists?(root)
+    end
+  end
 end
