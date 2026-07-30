@@ -11,7 +11,7 @@ describe TreeSitterManager::GrammarManager do
       manager = TreeSitterManager::GrammarManager.instance
       manager.set_install_hook_for_test { |language| seen << language; TreeSitterManager::BoolResult.success }
 
-      manager.install_grammar_sync("fixture").success?.should be_true
+      manager.ensure_grammar_with_result("fixture").success?.should be_true
       seen.should eq(["fixture"])
     ensure
       TreeSitterManager::GrammarManager.test_reset

@@ -57,8 +57,8 @@ Feature-size tasks, ordered by impact. Check off as completed.
 - **Test**: level resolution for chains, diamonds, cycles, independent langs
 
 ### [x] Grammar install error handling
-- `compile_sources` captures stderr from cc/gcc and returns `{Bool, String}` with compiler diagnostics
-- `install_grammar_sync` captures stderr from git clone and tree-sitter generate (was discarded)
+- `GrammarOperations.compile_shared_library_async` captures compiler diagnostics and returns the compiled library path
+- `Installer::GitCc` surfaces git clone and tree-sitter generation failures
 - `install_via_cc_async` captures stderr from git clone and surfaces compiler errors
 - `retry_with_backoff` retries git clone on transient failures (3 attempts, 1s/2s/4s backoff)
 - Error messages include stderr output from failed commands

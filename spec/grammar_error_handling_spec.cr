@@ -1,8 +1,8 @@
 require "./spec_helper"
 require "../src/tree_sitter_manager/grammar_manager"
 
-describe TreeSitterManager::GrammarManager do
-  describe "compile_sources" do
+describe TreeSitterManager::GrammarOperations do
+  describe "compile_shared_library_async" do
     it "returns stderr on compilation failure" do
       tmpdir = File.join(Dir.tempdir, "tsm-err-#{Random.rand(1_000_000)}")
       Dir.mkdir_p(tmpdir)
@@ -13,9 +13,9 @@ describe TreeSitterManager::GrammarManager do
       File.write(File.join(src_dir, "parser.c"), "this is not valid C code\n")
 
       begin
-        ok, err = TreeSitterManager::GrammarManager.compile_sources(tmpdir, "broken", "/dev/null")
+        ok, err = TreeSitterManager::GrammarOperations.compile_shared_library_async(tmpdir, "broken").receive
         ok.should be_false
-        err.should_not be_empty
+        err.not_nil!.should_not be_empty
       ensure
         FileUtils.rm_rf(tmpdir) if Dir.exists?(tmpdir)
       end
@@ -27,9 +27,9 @@ describe TreeSitterManager::GrammarManager do
       Dir.mkdir_p(File.join(tmpdir, "src"))
 
       begin
-        ok, err = TreeSitterManager::GrammarManager.compile_sources(tmpdir, "missing", "/dev/null")
+        ok, err = TreeSitterManager::GrammarOperations.compile_shared_library_async(tmpdir, "missing").receive
         ok.should be_false
-        err.should contain("parser.c not found")
+        err.should eq("No C source files found in src/")
       ensure
         FileUtils.rm_rf(tmpdir) if Dir.exists?(tmpdir)
       end

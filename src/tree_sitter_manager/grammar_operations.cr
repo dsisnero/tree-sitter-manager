@@ -166,7 +166,7 @@ module TreeSitterManager
           success, _, error = result_channel.receive
 
           if success
-            channel.send({true, File.join(source_dir, output_file)})
+            channel.send({true, output_file})
           else
             channel.send({false, "Compilation failed: #{error}"})
           end

@@ -1,9 +1,6 @@
-require "file_utils"
-require "process"
 require "json"
 require "tree_sitter"
 require "./platform"
-require "./grammar_operations"
 require "./language_loader"
 require "./language_registry"
 require "./grammar_metadata"
@@ -185,35 +182,6 @@ module TreeSitterManager
       channel
     end
 
-    # Clear cache (async, non-blocking)
-    def clear_cache_async : Channel(BoolResult)
-      channel = Channel(BoolResult).new
-
-      spawn do
-        begin
-          cache = @@cache
-          unless cache && Dir.exists?(cache.path)
-            channel.send(BoolResult.failure(
-              "Cache directory does not exist",
-              {"cache_dir" => @@cache_dir.to_s}
-            ))
-            next
-          end
-
-          cache.clear
-
-          channel.send(BoolResult.success)
-        rescue ex
-          channel.send(BoolResult.failure(
-            "Error clearing cache: #{ex.message}",
-            {"exception" => ex.class.to_s}
-          ))
-        end
-      end
-
-      channel
-    end
-
     # Get cache directory
     def cache_dir : String?
       @@cache.try(&.path) || @@cache_dir
@@ -240,13 +208,6 @@ module TreeSitterManager
       result && result.success? ? result.value : nil
     end
 
-    # Sync wrapper for grammar_available_async
-    def grammar_available?(language : String) : Bool
-      channel = grammar_available_async(language)
-      result = Timeout.with_timeout_async(5_000, channel)
-      result ? result.success? && result.value == true : false
-    end
-
     # Class method wrappers for convenience
     def self.ensure_grammar(language : String, timeout_ms : Int32 = 120_000) : Bool
       instance.ensure_grammar(language, timeout_ms)
@@ -254,10 +215,6 @@ module TreeSitterManager
 
     def self.get_grammar_path(language : String) : String?
       instance.get_grammar_path(language)
-    end
-
-    def self.grammar_available?(language : String) : Bool
-      instance.grammar_available?(language)
     end
 
     # Private methods
@@ -427,62 +384,6 @@ module TreeSitterManager
         Installer::Npm.new,
         Installer::GitTreeSitter.new,
       ]).install(language)
-    end
-
-    # Direct synchronous install: clone + cc compile + cache in one shot.
-    # Used by SourceHighlighter to ensure grammar availability before highlighting.
-    def install_grammar_sync(language : String) : BoolResult
-      ensure_grammar_with_result(language)
-    end
-
-    # Compile tree-sitter parser sources to a shared library using cc.
-    # Like syntastica's parsers-git approach: direct cc, no tree-sitter CLI.
-    # Returns {success, stderr_output} so callers can surface compiler diagnostics.
-    def self.compile_sources(source_dir : String, language : String, output_path : String) : {Bool, String}
-      ext = Platform.shared_library_extension
-      src_dir = File.join(source_dir, "src")
-
-      parser_c = File.join(src_dir, "parser.c")
-      return {false, "parser.c not found in #{src_dir}"} unless File.exists?(parser_c)
-
-      scanner_c = File.join(src_dir, "scanner.c")
-      scanner_cc = File.join(src_dir, "scanner.cc")
-
-      sources = [parser_c]
-      sources << scanner_c if File.exists?(scanner_c)
-      sources << scanner_cc if File.exists?(scanner_cc)
-
-      args = ["-shared", "-fPIC", "-O2", "-I#{src_dir}", "-I/usr/local/include", "-I/usr/include"]
-      {% if flag?(:darwin) %}
-        args << "-dynamiclib"
-        {% if flag?(:aarch64) || flag?(:arm64) %}
-          args << "-arch" << "arm64"
-        {% else %}
-          args << "-arch" << "x86_64"
-        {% end %}
-      {% end %}
-      args << "-o" << output_path
-      args.concat(sources)
-
-      success, err = try_compile("cc", args)
-      unless success
-        success, err = try_compile("gcc", args)
-      end
-      {success, err}
-    end
-
-    # Run a compiler and capture stderr
-    private def self.try_compile(compiler : String, args : Array(String)) : {Bool, String}
-      begin
-        err_io = IO::Memory.new
-        status = Process.run(compiler, args,
-          output: Process::Redirect::Pipe,
-          error: err_io,
-        )
-        {status.success?, err_io.to_s.strip}
-      rescue ex
-        {false, ex.message || "unknown error"}
-      end
     end
 
     # Metadata-related methods

@@ -1,7 +1,7 @@
 require "./spec_helper"
 require "file_utils"
 
-describe TreeSitterManager::GrammarManager, "#compile_sources" do
+describe TreeSitterManager::GrammarOperations, "#compile_shared_library_async" do
   it "compiles a C source file into a shared library" do
     tmpdir = File.join(Dir.tempdir, "tsm-cc-test-#{Random.rand(1_000_000)}")
     Dir.mkdir_p(tmpdir)
@@ -13,16 +13,13 @@ describe TreeSitterManager::GrammarManager, "#compile_sources" do
     begin
       output_path = File.join(tmpdir, TreeSitterManager::Platform.lib_name("test"))
 
-      ok, err = TreeSitterManager::GrammarManager.compile_sources(tmpdir, "test", output_path)
-      ok.should be_true, "compile failed: #{err}"
+      ok, result = TreeSitterManager::GrammarOperations.compile_shared_library_async(tmpdir, "test").receive
+      ok.should be_true, "compile failed: #{result}"
+      result.should eq(output_path)
       File.exists?(output_path).should be_true
     ensure
       FileUtils.rm_rf(tmpdir) if Dir.exists?(tmpdir)
     end
-  end
-
-  it "responds to compile_sources" do
-    TreeSitterManager::GrammarManager.responds_to?(:compile_sources).should be_true
   end
 
   it "builds the canonical grammar library filename" do
