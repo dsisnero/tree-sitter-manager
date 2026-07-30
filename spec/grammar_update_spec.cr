@@ -60,4 +60,28 @@ describe TreeSitterManager::GrammarManager do
       FileUtils.rm_rf(root) if Dir.exists?(root)
     end
   end
+
+  it "reinstalls a cached grammar when its registry pin changes" do
+    root = File.join(Dir.tempdir, "tsm-pin-cache-#{Random::Secure.hex(8)}")
+    source = File.join(root, "fixture.#{TreeSitterManager::Platform.shared_library_extension}")
+    seen = [] of String
+
+    begin
+      TreeSitterManager::GrammarManager.test_reset(root)
+      TreeSitterManager::GrammarManager.init(root)
+      File.write(source, "fixture")
+      cache = TreeSitterManager::CacheDir.new(root)
+      cache.install_library("crystal", source, TreeSitterManager::GrammarMetadata.new(
+        language: "crystal", type: "cc", commit_hash: "outdated-pin"
+      ))
+
+      manager = TreeSitterManager::GrammarManager.instance
+      manager.set_install_hook_for_test { |language| seen << language; TreeSitterManager::BoolResult.success }
+      manager.ensure_grammar_with_result("crystal").success?.should be_true
+      seen.should eq(["crystal"])
+    ensure
+      TreeSitterManager::GrammarManager.test_reset
+      FileUtils.rm_rf(root) if Dir.exists?(root)
+    end
+  end
 end

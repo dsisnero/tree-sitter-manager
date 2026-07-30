@@ -24,7 +24,9 @@ langs.each do |lang_entry|
 
   print "  #{name.ljust(20)} "
 
-  output = `git ls-remote #{url} HEAD 2>/dev/null`
+  branch = git_h["branch"]?.try(&.as_s)
+  target = branch || "HEAD"
+  output = `git ls-remote #{url} #{target} 2>/dev/null`
   if $?.success? && output =~ /^(\S+)/
     latest_rev = $1
     if latest_rev[0..11] != current_rev[0..11]

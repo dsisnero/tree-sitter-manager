@@ -99,6 +99,7 @@ module TreeSitterManager
       extensions : Array(String) = [] of String,
       git_url : String = "",
       git_rev : String = "",
+      git_branch : String? = nil,
       ffi_func : String = "",
       parser_path : String = "",
       c_symbol : String? = nil,
@@ -146,6 +147,7 @@ module TreeSitterManager
           extensions: entry["extensions"],
           git_url: entry["git_url"],
           git_rev: entry["git_rev"],
+          git_branch: entry["git_branch"],
           ffi_func: entry["ffi_func"],
           c_symbol: entry["c_symbol"]?,
           abi_version: (v = entry["abi_version"]; v ? v.to_u32 : nil),
@@ -164,6 +166,7 @@ module TreeSitterManager
           extensions: ts.extensions,
           git_url: ts.git_url,
           git_rev: ts.git_rev,
+          git_branch: ts.git_branch,
           ffi_func: ts.ffi_func,
         )
       end
@@ -178,6 +181,7 @@ module TreeSitterManager
           extensions: tsx.extensions,
           git_url: tsx.git_url,
           git_rev: tsx.git_rev,
+          git_branch: tsx.git_branch,
           ffi_func: tsx.ffi_func,
         )
       end
@@ -195,6 +199,7 @@ module TreeSitterManager
         extensions: ["clj", "cljs", "cljc", "edn"],
         git_url: registry["clojure"]?.try(&.git_url) || "",
         git_rev: registry["clojure"]?.try(&.git_rev) || "",
+        git_branch: registry["clojure"]?.try(&.git_branch),
         ffi_func: registry["clojure"]?.try(&.ffi_func) || "",
       )
 
@@ -339,6 +344,10 @@ module TreeSitterManager
       info = get_language_info(language)
       return nil unless info
       info.git_rev.empty? ? nil : info.git_rev
+    end
+
+    def git_branch_for(language : String) : String?
+      get_language_info(language).try(&.git_branch)
     end
 
     # Get FFI function name for a language (for dlsym loading)

@@ -10,7 +10,7 @@ module TreeSitterManager
         :cc
       end
 
-      def initialize(@repository_url : String? = nil, @revision : String? = nil, @tree_sitter_command : String = "tree-sitter")
+      def initialize(@repository_url : String? = nil, @revision : String? = nil, @branch : String? = nil, @tree_sitter_command : String = "tree-sitter")
       end
 
       def download(language : String, temporary_directory : String) : BoolResult
@@ -52,7 +52,7 @@ module TreeSitterManager
           url: repository_url_for(language),
           type: "cc",
           commit_hash: status.success? ? commit.to_s.strip : nil,
-          git_ref: remote_head_ref(temporary_directory),
+          git_branch: branch_for(language),
           package_name: LanguageRegistry.package_name(language) || "tree-sitter-#{language}",
           language: language,
           installed_at: Time.utc,
@@ -68,12 +68,8 @@ module TreeSitterManager
         @revision || (@repository_url.nil? ? LanguageRegistry.git_revision_for(language) : nil)
       end
 
-      private def remote_head_ref(directory : String) : String?
-        output = IO::Memory.new
-        status = Process.run("git", ["symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"], chdir: directory, output: output, error: Process::Redirect::Pipe)
-        return nil unless status.success?
-        branch = output.to_s.strip.sub(/^origin\//, "")
-        branch.empty? ? nil : "refs/heads/#{branch}"
+      private def branch_for(language : String) : String?
+        @branch || (@repository_url.nil? ? LanguageRegistry.git_branch_for(language) : nil)
       end
     end
   end

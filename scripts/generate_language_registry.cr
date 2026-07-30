@@ -34,6 +34,7 @@ lang_names = [] of String
 lang_exts = [] of Array(String)
 lang_gits = [] of String
 lang_revs = [] of String
+lang_branches = [] of String?
 lang_ffi = [] of String
 lang_csym = [] of String?
 lang_dir = [] of String?
@@ -62,6 +63,7 @@ lang_defs.each do |name, defn|
   lang_exts << exts
   lang_gits << repo
   lang_revs << rev
+  lang_branches << branch
   lang_ffi << ffi
   lang_csym << csym
   lang_dir << dir
@@ -124,6 +126,7 @@ File.open(OUTPUT, "w") do |io|
     end
     io << "        git_url: #{lang_gits[i].inspect},\n"
     io << "        git_rev: #{lang_revs[i].inspect},\n"
+    io << "        git_branch: #{lang_branches[i].inspect},\n"
     io << "        ffi_func: #{lang_ffi[i].inspect},\n"
     io << "        c_symbol: #{lang_csym[i].inspect},\n"
     io << "        directory: #{lang_dir[i].inspect},\n"
@@ -135,7 +138,7 @@ File.open(OUTPUT, "w") do |io|
     io << "        has_locals: #{lang_loc[i]},\n"
     io << "      },\n"
   end
-  io << "    ] of NamedTuple(name: String, extensions: Array(String), git_url: String, git_rev: String, ffi_func: String, c_symbol: String?, directory: String?, abi_version: Int64?, generate: Bool, nvim_like: Bool, has_injections: Bool, has_locals: Bool)\n"
+  io << "    ] of NamedTuple(name: String, extensions: Array(String), git_url: String, git_rev: String, git_branch: String?, ffi_func: String, c_symbol: String?, directory: String?, abi_version: Int64?, generate: Bool, nvim_like: Bool, has_injections: Bool, has_locals: Bool)\n"
   io << "  end\n"
   io << "end\n"
 end

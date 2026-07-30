@@ -20,10 +20,7 @@ describe TreeSitterManager::VersionChecker::Git do
       Process.run("git", ["commit", "-am", "update fixture commit"], chdir: root).success?.should be_true
 
       checker = TreeSitterManager::VersionChecker::Git.new
-      default_branch = IO::Memory.new
-      Process.run("git", ["symbolic-ref", "--short", "HEAD"], chdir: root, output: default_branch).success?.should be_true
-      checker.default_ref_for(root).value.should eq("refs/heads/#{default_branch.to_s.strip}")
-      stable = TreeSitterManager::VersionChecker::GitVersion.new(root, installed.to_s.strip, "refs/heads/stable")
+      stable = TreeSitterManager::VersionChecker::GitVersion.new(root, installed.to_s.strip, "stable")
       checker.needs_update?(stable).value.should be_false
 
       Process.run("git", ["branch", "-f", "stable", "HEAD"], chdir: root).success?.should be_true
@@ -31,7 +28,7 @@ describe TreeSitterManager::VersionChecker::Git do
 
       latest = IO::Memory.new
       Process.run("git", ["rev-parse", "stable"], chdir: root, output: latest).success?.should be_true
-      checker.needs_update?(TreeSitterManager::VersionChecker::GitVersion.new(root, latest.to_s.strip, "refs/heads/stable")).value.should be_false
+      checker.needs_update?(TreeSitterManager::VersionChecker::GitVersion.new(root, latest.to_s.strip, "stable")).value.should be_false
     ensure
       FileUtils.rm_rf(root) if Dir.exists?(root)
     end

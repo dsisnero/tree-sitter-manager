@@ -10,7 +10,7 @@ module TreeSitterManager
         :git
       end
 
-      def initialize(@repository_url : String? = nil, @revision : String? = nil, @tree_sitter_command : String = "tree-sitter")
+      def initialize(@repository_url : String? = nil, @revision : String? = nil, @branch : String? = nil, @tree_sitter_command : String = "tree-sitter")
       end
 
       def download(language : String, temporary_directory : String) : BoolResult
@@ -40,7 +40,7 @@ module TreeSitterManager
       def create_manifest(language : String, temporary_directory : String) : GrammarMetadata
         commit = IO::Memory.new
         status = Process.run("git", ["rev-parse", "HEAD"], chdir: temporary_directory, output: commit, error: Process::Redirect::Pipe)
-        GrammarMetadata.new(url: repository_url_for(language), type: "tree-sitter", commit_hash: status.success? ? commit.to_s.strip : nil, git_ref: remote_head_ref(temporary_directory), package_name: LanguageRegistry.package_name(language) || "tree-sitter-#{language}", language: language)
+        GrammarMetadata.new(url: repository_url_for(language), type: "tree-sitter", commit_hash: status.success? ? commit.to_s.strip : nil, git_branch: branch_for(language), package_name: LanguageRegistry.package_name(language) || "tree-sitter-#{language}", language: language)
       end
 
       private def repository_url_for(language : String) : String
@@ -51,12 +51,8 @@ module TreeSitterManager
         @revision || (@repository_url.nil? ? LanguageRegistry.git_revision_for(language) : nil)
       end
 
-      private def remote_head_ref(directory : String) : String?
-        output = IO::Memory.new
-        status = Process.run("git", ["symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"], chdir: directory, output: output, error: Process::Redirect::Pipe)
-        return nil unless status.success?
-        branch = output.to_s.strip.sub(/^origin\//, "")
-        branch.empty? ? nil : "refs/heads/#{branch}"
+      private def branch_for(language : String) : String?
+        @branch || (@repository_url.nil? ? LanguageRegistry.git_branch_for(language) : nil)
       end
     end
   end

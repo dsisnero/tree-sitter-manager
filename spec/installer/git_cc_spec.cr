@@ -38,7 +38,7 @@ describe TreeSitterManager::Installer::GitCc do
       metadata.not_nil!.type.should eq("cc")
       metadata.not_nil!.url.should eq(repository)
       metadata.not_nil!.commit_hash.should eq(pinned.to_s.strip)
-      metadata.not_nil!.git_ref.not_nil!.should start_with("refs/heads/")
+      metadata.not_nil!.git_branch.should be_nil
     ensure
       FileUtils.rm_rf(root) if Dir.exists?(root)
     end

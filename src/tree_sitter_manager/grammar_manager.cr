@@ -349,7 +349,7 @@ module TreeSitterManager
         )
       end
 
-      if available_result.success? && available_result.value == true
+      if available_result.success? && available_result.value == true && cached_pin_current?(language)
         return BoolResult.success
       end
 
@@ -380,6 +380,20 @@ module TreeSitterManager
     private def notify_ensure_waiters(language : String, result : BoolResult) : Nil
       waiters = @state_mutex.synchronize { @pending_ensures.delete(language) } || [] of Channel(BoolResult)
       waiters.each(&.send(result))
+    end
+
+    # A language-pack registry revision is an input to the compiled parser.
+    # Reuse only a cache artifact built from that same pin; otherwise the
+    # coordinator replaces it using the normal pinned installation path.
+    private def cached_pin_current?(language : String) : Bool
+      expected_revision = LanguageRegistry.git_revision_for(language)
+      return true unless expected_revision
+
+      metadata = get_grammar_metadata(language)
+      return false unless metadata
+      return true unless {"git", "tree-sitter", "cc"}.includes?(metadata.type)
+
+      metadata.commit_hash == expected_revision
     end
 
     # Make a grammar available (main async logic)
@@ -528,18 +542,7 @@ module TreeSitterManager
 
           case metadata.type
           when "git", "tree-sitter", "cc"
-            checker = VersionChecker::Git.new
-            git_ref = metadata.git_ref
-            unless git_ref
-              resolved_ref = checker.default_ref_for(metadata.url)
-              unless resolved_ref.success?
-                channel.send(BoolResult.failure(resolved_ref.error || "Failed to resolve git default ref", resolved_ref.details))
-                next
-              end
-              git_ref = resolved_ref.value
-            end
-
-            channel.send(VersionChecker.needs_update?(VersionChecker::GitVersion.new(metadata.url, metadata.commit_hash, git_ref || "")))
+            channel.send(VersionChecker.needs_update?(VersionChecker::GitVersion.new(metadata.url, metadata.commit_hash, metadata.git_branch)))
           when "npm"
             channel.send(VersionChecker.needs_update?(VersionChecker::NpmVersion.new(metadata.package_name, metadata.version)))
           when "local"
