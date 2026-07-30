@@ -8,9 +8,10 @@ module TreeSitterManager
     class Candidate
       getter language : String
       getter library_path : String
+      getter query_directory : String?
       getter manifest : GrammarMetadata
 
-      def initialize(@language : String, @library_path : String, @manifest : GrammarMetadata)
+      def initialize(@language : String, @library_path : String, @query_directory : String?, @manifest : GrammarMetadata)
       end
     end
 
@@ -47,7 +48,8 @@ module TreeSitterManager
             end
 
             response = Channel(Bool).new
-            candidate = Candidate.new(language, library_path, create_manifest(language, temporary_directory))
+            query_directory = Finder.new.find_query_directory_async(temporary_directory).receive
+            candidate = Candidate.new(language, library_path, query_directory, create_manifest(language, temporary_directory))
             attempts.send(Attempt.new(BoolResult.success, candidate, response, done, installation_method))
             response.receive
           rescue ex

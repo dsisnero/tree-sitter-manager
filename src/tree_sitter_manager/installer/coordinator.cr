@@ -29,7 +29,7 @@ module TreeSitterManager
         ordered.each do |attempt|
           candidate = attempt.candidate.not_nil!
           begin
-            @cache.install_library(candidate.language, candidate.library_path, candidate.manifest)
+            @cache.install_parser(candidate.language, candidate.library_path, candidate.manifest, candidate.query_directory)
             winner = BoolResult.success
             selected = attempt
             break

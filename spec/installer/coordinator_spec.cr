@@ -49,6 +49,21 @@ private class MethodFixtureInstaller < TreeSitterManager::Installer::Base
   end
 end
 
+private class QueryFixtureInstaller < TreeSitterManager::Installer::Base
+  def download(language : String, temporary_directory : String) : TreeSitterManager::BoolResult
+    extension = TreeSitterManager::Platform.shared_library_extension
+    File.write(File.join(temporary_directory, "#{language}.#{extension}"), "fixture grammar")
+    queries = File.join(temporary_directory, "queries")
+    Dir.mkdir_p(queries)
+    File.write(File.join(queries, "highlights.scm"), "(identifier) @variable")
+    TreeSitterManager::BoolResult.success
+  end
+
+  def create_manifest(language : String, temporary_directory : String) : TreeSitterManager::GrammarMetadata
+    TreeSitterManager::GrammarMetadata.new(language: language, type: "fixture", package_name: "fixture")
+  end
+end
+
 describe TreeSitterManager::Installer::Coordinator do
   it "runs installers concurrently and atomically installs the first successful artifact with its manifest" do
     root = File.join(Dir.tempdir, "tsm-installer-#{Random::Secure.hex(8)}")
@@ -84,6 +99,21 @@ describe TreeSitterManager::Installer::Coordinator do
       result.success?.should be_true
       File.read(cache["python"]?.not_nil!).should eq("npm")
       TreeSitterManager::GrammarMetadataStore.load(cache.language_dir("python")).not_nil!.type.should eq("npm")
+    ensure
+      FileUtils.rm_rf(root) if Dir.exists?(root)
+    end
+  end
+
+  it "commits discovered query assets with the selected grammar library" do
+    root = File.join(Dir.tempdir, "tsm-installer-queries-#{Random::Secure.hex(8)}")
+
+    begin
+      cache = TreeSitterManager::CacheDir.new(root)
+      result = TreeSitterManager::Installer::Coordinator.new(cache, [QueryFixtureInstaller.new]).install("scheme")
+
+      result.success?.should be_true
+      File.read(cache["scheme"]?.not_nil!).should eq("fixture grammar")
+      File.read(File.join(cache.language_dir("scheme"), "queries", "highlights.scm")).should eq("(identifier) @variable")
     ensure
       FileUtils.rm_rf(root) if Dir.exists?(root)
     end

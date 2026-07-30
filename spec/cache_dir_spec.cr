@@ -85,4 +85,30 @@ describe TreeSitterManager::CacheDir do
       FileUtils.rm_rf(root) if Dir.exists?(root)
     end
   end
+
+  it "installs a grammar library, manifest, and optional queries as one parser artifact" do
+    root = File.join(Dir.tempdir, "tsm-cache-parser-#{Random::Secure.hex(8)}")
+    source = File.join(Dir.tempdir, "tsm-cache-parser-library-#{Random::Secure.hex(8)}.bin")
+    queries = File.join(Dir.tempdir, "tsm-cache-parser-queries-#{Random::Secure.hex(8)}")
+    manifest = TreeSitterManager::GrammarMetadata.new(language: "scheme", type: "git", commit_hash: "pinned")
+
+    begin
+      File.write(source, "grammar bytes")
+      Dir.mkdir_p(queries)
+      File.write(File.join(queries, "highlights.scm"), "(identifier) @variable")
+      File.write(File.join(queries, "locals.scm"), "(definition) @local.scope")
+
+      cache = TreeSitterManager::CacheDir.new(root)
+      destination = cache.install_parser("scheme", source, manifest, queries)
+
+      File.read(destination).should eq("grammar bytes")
+      TreeSitterManager::GrammarMetadataStore.load(cache.language_dir("scheme")).not_nil!.commit_hash.should eq("pinned")
+      File.read(File.join(cache.language_dir("scheme"), "queries", "highlights.scm")).should eq("(identifier) @variable")
+      File.read(File.join(cache.language_dir("scheme"), "queries", "locals.scm")).should eq("(definition) @local.scope")
+    ensure
+      File.delete(source) if File.exists?(source)
+      FileUtils.rm_rf(queries) if Dir.exists?(queries)
+      FileUtils.rm_rf(root) if Dir.exists?(root)
+    end
+  end
 end

@@ -63,7 +63,7 @@ module TreeSitterManager
     end
 
     # Commits a library and its manifest while holding the cache lock.
-    def install_library(language : String, source : String | Path, manifest : GrammarMetadata) : String
+    def install_library(language : String, source : String | Path, manifest : GrammarMetadata, query_source : String? = nil) : String
       source_path = source.to_s
       raise ArgumentError.new("Grammar library does not exist: #{source_path}") unless File.exists?(source_path)
 
@@ -71,12 +71,33 @@ module TreeSitterManager
       @mutex.synchronize do
         Dir.mkdir_p(File.dirname(destination))
         write_atomically(destination) { |temporary| File.copy(source_path, temporary) }
+        install_queries(language, query_source) if query_source
         unless GrammarMetadataStore.save(language_dir(language), manifest)
           File.delete(destination) if File.exists?(destination)
           raise "Could not save grammar manifest for #{language}"
         end
       end
       destination
+    end
+
+    # Atomically commits the complete parser artifact: shared library,
+    # provenance metadata, and optional grammar-provided query assets.
+    def install_parser(language : String, library : String | Path, manifest : GrammarMetadata, query_source : String? = nil) : String
+      install_library(language, library, manifest, query_source)
+    end
+
+    def query_dir(language : String) : String
+      File.join(language_dir(language), "queries")
+    end
+
+    private def install_queries(language : String, source : String) : Nil
+      destination = query_dir(language)
+      FileUtils.rm_rf(destination) if Dir.exists?(destination)
+      Dir.mkdir_p(destination)
+      %w[highlights.scm injections.scm locals.scm].each do |filename|
+        path = File.join(source, filename)
+        File.copy(path, File.join(destination, filename)) if File.exists?(path)
+      end
     end
 
     # Removes cached grammar libraries, retaining metadata and the cache root.
@@ -142,7 +163,7 @@ module TreeSitterManager
       File.expand_path(@path) == File.expand_path(other)
     end
 
-    private def write_atomically(destination : String, &write : String ->) : Nil
+    private def write_atomically(destination : String, & : String ->) : Nil
       temporary = "#{destination}.tmp-#{Process.pid}-#{Random.rand(1_000_000)}"
       begin
         yield temporary

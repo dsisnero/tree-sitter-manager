@@ -47,5 +47,4 @@ describe TreeSitterManager::Installer::GitTreeSitter do
       FileUtils.rm_rf(root) if Dir.exists?(root)
     end
   end
-
 end
