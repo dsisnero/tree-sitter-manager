@@ -56,47 +56,56 @@ module TreeSitterManager
     end
 
     # Map common filetype names to tree-sitter language names.
-    private def canonicalize(filetype : String) : String
-      case filetype.downcase
-      when "javascript", "js"     then "javascript"
-      when "typescript", "ts"     then "typescript"
-      when "python", "py"         then "python"
-      when "ruby", "rb"           then "ruby"
-      when "rust", "rs"           then "rust"
-      when "go", "golang"         then "go"
-      when "java"                 then "java"
-      when "c"                    then "c"
-      when "cpp", "c++", "cxx"    then "cpp"
-      when "csharp", "c#"         then "csharp"
-      when "sh", "shell", "bash"  then "bash"
-      when "html"                 then "html"
-      when "css"                  then "css"
-      when "json"                 then "json"
-      when "yaml", "yml"          then "yaml"
-      when "xml"                  then "xml"
-      when "markdown", "md"       then "markdown"
-      when "sql"                  then "sql"
-      when "lua"                  then "lua"
-      when "php"                  then "php"
-      when "perl"                 then "perl"
-      when "docker", "dockerfile" then "dockerfile"
-      when "make"                 then "make"
-      when "toml"                 then "toml"
-      when "haskell"              then "haskell"
-      when "kotlin"               then "kotlin"
-      when "swift"                then "swift"
-      when "scala"                then "scala"
-      when "elixir"               then "elixir"
-      when "erlang"               then "erlang"
-      when "clojure"              then "clojure"
-      when "dart"                 then "dart"
-      when "r"                    then "r"
-      when "ocaml"                then "ocaml"
-      when "zig"                  then "zig"
-      when "cmake"                then "cmake"
-      else
-        filetype.downcase
+    FILETYPE_ALIASES = {
+      "dockerfile" => ["docker", "dockerfile"],
+      "markdown"   => ["markdown", "md"],
+      "csharp"     => ["csharp", "c#"],
+      "typescript" => ["typescript", "ts"],
+      "javascript" => ["javascript", "js"],
+      "python"     => ["python", "py"],
+      "ruby"       => ["ruby", "rb"],
+      "rust"       => ["rust", "rs"],
+      "golang"     => ["go", "golang"],
+      "cpp"        => ["cpp", "c++", "cxx"],
+      "bash"       => ["sh", "shell", "bash"],
+      "yaml"       => ["yaml", "yml"],
+      "java"       => ["java"],
+      "c"          => ["c"],
+      "html"       => ["html"],
+      "css"        => ["css"],
+      "json"       => ["json"],
+      "xml"        => ["xml"],
+      "sql"        => ["sql"],
+      "lua"        => ["lua"],
+      "php"        => ["php"],
+      "perl"       => ["perl"],
+      "make"       => ["make"],
+      "toml"       => ["toml"],
+      "haskell"    => ["haskell"],
+      "kotlin"     => ["kotlin"],
+      "swift"      => ["swift"],
+      "scala"      => ["scala"],
+      "elixir"     => ["elixir"],
+      "erlang"     => ["erlang"],
+      "clojure"    => ["clojure"],
+      "dart"       => ["dart"],
+      "r"          => ["r"],
+      "ocaml"      => ["ocaml"],
+      "zig"        => ["zig"],
+      "cmake"      => ["cmake"],
+    }
+
+    FILETYPE_TO_LANGUAGE = begin
+      map = {} of String => String
+      FILETYPE_ALIASES.each do |language, aliases|
+        aliases.each { |alias_name| map[alias_name] = language }
       end
+      map
+    end
+
+    private def canonicalize(filetype : String) : String
+      filetype_lower = filetype.downcase
+      FILETYPE_TO_LANGUAGE.fetch(filetype_lower, filetype_lower)
     end
 
     # Resolve language from file extension, using content as tiebreaker for ambiguous extensions.

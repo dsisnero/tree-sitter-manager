@@ -34,18 +34,16 @@ module TreeSitterManager
       completed = Channel(Nil).new
 
       spawn do
-        begin
-          Dir::Walk.walk(nil, @cache_dir) do |path, entry, error|
-            next if error || !entry || !entry.file?
+        Dir::Walk.walk(nil, @cache_dir) do |path, entry, error|
+          next if error || !entry || !entry.file?
 
-            if language = language_from_library_path(path)
-              discovered.send(language)
-            end
+          if language = language_from_library_path(path)
+            discovered.send(language)
           end
-        ensure
-          discovered.close
-          completed.send(nil)
         end
+      ensure
+        discovered.close
+        completed.send(nil)
       end
 
       while language = discovered.receive?

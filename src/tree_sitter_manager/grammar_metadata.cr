@@ -118,15 +118,13 @@ module TreeSitterManager
       completed = Channel(Nil).new
 
       spawn do
-        begin
-          Dir::Walk.walk(nil, grammars_root) do |path, entry, error|
-            next if error || !entry || !entry.dir?
-            candidates.send(path) if grammar_directory?(path)
-          end
-        ensure
-          candidates.close
-          completed.send(nil)
+        Dir::Walk.walk(nil, grammars_root) do |path, entry, error|
+          next if error || !entry || !entry.dir?
+          candidates.send(path) if grammar_directory?(path)
         end
+      ensure
+        candidates.close
+        completed.send(nil)
       end
 
       while grammar_dir = candidates.receive?

@@ -182,15 +182,13 @@ module TreeSitterManager
       completed = Channel(Nil).new(1)
 
       spawn do
-        begin
-          Dir::Walk.walk(nil, root) do |path, entry, error|
-            next if error || !entry || !entry.file?
-            discovered.send(path) if File.basename(path) == library_name
-          end
-        ensure
-          discovered.close
-          completed.send(nil)
+        Dir::Walk.walk(nil, root) do |path, entry, error|
+          next if error || !entry || !entry.file?
+          discovered.send(path) if File.basename(path) == library_name
         end
+      ensure
+        discovered.close
+        completed.send(nil)
       end
 
       while path = discovered.receive?

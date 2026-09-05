@@ -27,7 +27,8 @@ module TreeSitterManager
         winner : BoolResult? = nil
         selected : Attempt? = nil
         ordered.each do |attempt|
-          candidate = attempt.candidate.not_nil!
+          candidate = attempt.candidate
+          next unless candidate
           begin
             @cache.install_parser(candidate.language, candidate.library_path, candidate.manifest, candidate.query_directory)
             winner = BoolResult.success
@@ -38,7 +39,10 @@ module TreeSitterManager
           end
         end
 
-        candidates.each { |attempt| attempt.response.not_nil!.send(attempt == selected) }
+        candidates.each do |attempt|
+          response = attempt.response
+          response.send(attempt == selected) if response
+        end
         received.each(&.done.receive)
 
         winner || BoolResult.failure("All grammar installers failed", {"language" => language, "errors" => errors.join("; ")})

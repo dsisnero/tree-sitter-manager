@@ -15,19 +15,17 @@ module TreeSitterManager
       completed = Channel(Nil).new(1)
 
       spawn do
-        begin
-          config = Dir::Walk::Config.new(max_depth: 1, num_workers: 1)
-          Dir::Walk.walk(config, expanded_root) do |path, entry, error|
-            next if error || !entry
-            expanded_path = File.expand_path(path)
-            if File.dirname(expanded_path) == expanded_root
-              discovered.send(File.basename(expanded_path))
-            end
+        config = Dir::Walk::Config.new(max_depth: 1, num_workers: 1)
+        Dir::Walk.walk(config, expanded_root) do |path, entry, error|
+          next if error || !entry
+          expanded_path = File.expand_path(path)
+          if File.dirname(expanded_path) == expanded_root
+            discovered.send(File.basename(expanded_path))
           end
-        ensure
-          discovered.close
-          completed.send(nil)
         end
+      ensure
+        discovered.close
+        completed.send(nil)
       end
 
       while child = discovered.receive?
@@ -48,15 +46,13 @@ module TreeSitterManager
       completed = Channel(Nil).new(1)
 
       spawn do
-        begin
-          Dir::Walk.walk(nil, root) do |path, entry, error|
-            next if error || !entry || !entry.file?
-            discovered.send(path) if suffix.nil? || path.ends_with?(suffix)
-          end
-        ensure
-          discovered.close
-          completed.send(nil)
+        Dir::Walk.walk(nil, root) do |path, entry, error|
+          next if error || !entry || !entry.file?
+          discovered.send(path) if suffix.nil? || path.ends_with?(suffix)
         end
+      ensure
+        discovered.close
+        completed.send(nil)
       end
 
       while path = discovered.receive?

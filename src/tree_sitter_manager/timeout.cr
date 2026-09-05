@@ -9,12 +9,10 @@ module TreeSitterManager
 
       # Spawn the operation
       spawn do
-        begin
-          result = block.call
-          result_channel.send(result)
-        rescue ex
-          result_channel.send(nil)
-        end
+        result = block.call
+        result_channel.send(result)
+      rescue ex
+        result_channel.send(nil)
       end
 
       # Spawn the timeout

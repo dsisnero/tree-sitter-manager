@@ -75,33 +75,30 @@ module TreeSitterManager
       channel = Channel(BoolResult).new
 
       spawn do
-        temp_dir : String? = nil
-        begin
-          # Check via tree-sitter repository (fast path)
-          if TreeSitter::Repository.language_names.includes?(language)
-            channel.send(BoolResult.success)
-            next
-          end
+        # Check via tree-sitter repository (fast path)
+        if TreeSitter::Repository.language_names.includes?(language)
+          channel.send(BoolResult.success)
+          next
+        end
 
-          # Check our cache
-          if @@cache
-            if grammar_path?(language)
-              channel.send(BoolResult.success)
-            else
-              channel.send(BoolResult.new(value: false))
-            end
+        # Check our cache
+        if @@cache
+          if grammar_path?(language)
+            channel.send(BoolResult.success)
           else
-            channel.send(BoolResult.failure(
-              "Cache directory not initialized",
-              {"language" => language}
-            ))
+            channel.send(BoolResult.new(value: false))
           end
-        rescue ex
+        else
           channel.send(BoolResult.failure(
-            "Error checking grammar availability: #{ex.message}",
-            {"language" => language, "exception" => ex.class.to_s}
+            "Cache directory not initialized",
+            {"language" => language}
           ))
         end
+      rescue ex
+        channel.send(BoolResult.failure(
+          "Error checking grammar availability: #{ex.message}",
+          {"language" => language, "exception" => ex.class.to_s}
+        ))
       end
 
       channel
@@ -112,40 +109,38 @@ module TreeSitterManager
       channel = Channel(StringResult).new
 
       spawn do
-        begin
-          # Check tree-sitter repository first
-          language_paths = LanguageLoader.repository_language_paths
-          if path = language_paths[language]?
-            so_path = path.join(Platform.lib_name(language))
+        # Check tree-sitter repository first
+        language_paths = LanguageLoader.repository_language_paths
+        if path = language_paths[language]?
+          so_path = path.join(Platform.lib_name(language))
 
-            if File.exists?(so_path)
-              channel.send(StringResult.success(so_path.to_s))
-              next
-            end
+          if File.exists?(so_path)
+            channel.send(StringResult.success(so_path.to_s))
+            next
           end
+        end
 
-          # Check cache
-          if cache = @@cache
-            if path = grammar_path?(language)
-              channel.send(StringResult.success(path))
-            else
-              channel.send(StringResult.failure(
-                "Grammar not found in cache",
-                {"language" => language, "cache_dir" => cache.path}
-              ))
-            end
+        # Check cache
+        if cache = @@cache
+          if path = grammar_path?(language)
+            channel.send(StringResult.success(path))
           else
             channel.send(StringResult.failure(
-              "Cache directory not initialized",
-              {"language" => language}
+              "Grammar not found in cache",
+              {"language" => language, "cache_dir" => cache.path}
             ))
           end
-        rescue ex
+        else
           channel.send(StringResult.failure(
-            "Error getting grammar path: #{ex.message}",
-            {"language" => language, "exception" => ex.class.to_s}
+            "Cache directory not initialized",
+            {"language" => language}
           ))
         end
+      rescue ex
+        channel.send(StringResult.failure(
+          "Error getting grammar path: #{ex.message}",
+          {"language" => language, "exception" => ex.class.to_s}
+        ))
       end
 
       channel
@@ -358,14 +353,12 @@ module TreeSitterManager
       channel = Channel(BoolResult).new
 
       spawn do
-        begin
-          channel.send(install_grammar(language))
-        rescue ex
-          channel.send(BoolResult.failure(
-            "Error making grammar available: #{ex.message}",
-            {"language" => language, "exception" => ex.class.to_s}
-          ))
-        end
+        channel.send(install_grammar(language))
+      rescue ex
+        channel.send(BoolResult.failure(
+          "Error making grammar available: #{ex.message}",
+          {"language" => language, "exception" => ex.class.to_s}
+        ))
       end
 
       channel
@@ -431,36 +424,34 @@ module TreeSitterManager
       channel = Channel(BoolResult).new
 
       spawn do
-        begin
-          metadata = get_grammar_metadata(language)
-          unless metadata
-            channel.send(BoolResult.failure(
-              "No metadata found for grammar",
-              {"language" => language}
-            ))
-            next
-          end
-
-          case metadata.type
-          when "git", "tree-sitter", "cc"
-            channel.send(VersionChecker.needs_update?(VersionChecker::GitVersion.new(metadata.url, metadata.commit_hash, metadata.git_branch)))
-          when "npm"
-            channel.send(VersionChecker.needs_update?(VersionChecker::NpmVersion.new(metadata.package_name, metadata.version)))
-          when "local"
-            # Local grammars don't have updates
-            channel.send(BoolResult.new(value: false))
-          else
-            channel.send(BoolResult.failure(
-              "Unknown grammar type",
-              {"language" => language, "type" => metadata.type}
-            ))
-          end
-        rescue ex
+        metadata = get_grammar_metadata(language)
+        unless metadata
           channel.send(BoolResult.failure(
-            "Error checking for updates: #{ex.message}",
-            {"language" => language, "exception" => ex.class.to_s}
+            "No metadata found for grammar",
+            {"language" => language}
+          ))
+          next
+        end
+
+        case metadata.type
+        when "git", "tree-sitter", "cc"
+          channel.send(VersionChecker.needs_update?(VersionChecker::GitVersion.new(metadata.url, metadata.commit_hash, metadata.git_branch)))
+        when "npm"
+          channel.send(VersionChecker.needs_update?(VersionChecker::NpmVersion.new(metadata.package_name, metadata.version)))
+        when "local"
+          # Local grammars don't have updates
+          channel.send(BoolResult.new(value: false))
+        else
+          channel.send(BoolResult.failure(
+            "Unknown grammar type",
+            {"language" => language, "type" => metadata.type}
           ))
         end
+      rescue ex
+        channel.send(BoolResult.failure(
+          "Error checking for updates: #{ex.message}",
+          {"language" => language, "exception" => ex.class.to_s}
+        ))
       end
 
       channel
@@ -471,54 +462,52 @@ module TreeSitterManager
       channel = Channel(BoolResult).new
 
       spawn do
-        begin
-          unless Dir.exists?(local_path)
-            channel.send(BoolResult.failure(
-              "Local directory does not exist",
-              {"path" => local_path}
-            ))
-            next
-          end
-
-          # Check if it looks like a tree-sitter grammar
-          grammar_json = File.join(local_path, "grammar.json")
-          src_dir = File.join(local_path, "src")
-
-          unless File.exists?(grammar_json) || Dir.exists?(src_dir)
-            channel.send(BoolResult.failure(
-              "Directory does not appear to be a tree-sitter grammar",
-              {"path" => local_path}
-            ))
-            next
-          end
-
-          # Infer language if not provided
-          inferred_language = language
-          unless inferred_language
-            inferred_language = infer_language_from_path(local_path, grammar_json)
-            unless inferred_language
-              channel.send(BoolResult.failure(
-                "Could not infer language from local grammar. Please specify with --language option.",
-                {"path" => local_path}
-              ))
-              next
-            end
-          end
-
-          if cache = @@cache
-            channel.send(Installer::Coordinator.new(cache, [Installer::Local.new(local_path)]).install(inferred_language))
-          else
-            channel.send(BoolResult.failure(
-              "Cache directory not initialized",
-              {"path" => local_path}
-            ))
-          end
-        rescue ex
+        unless Dir.exists?(local_path)
           channel.send(BoolResult.failure(
-            "Error installing local grammar: #{ex.message}",
-            {"path" => local_path, "exception" => ex.class.to_s}
+            "Local directory does not exist",
+            {"path" => local_path}
+          ))
+          next
+        end
+
+        # Check if it looks like a tree-sitter grammar
+        grammar_json = File.join(local_path, "grammar.json")
+        src_dir = File.join(local_path, "src")
+
+        unless File.exists?(grammar_json) || Dir.exists?(src_dir)
+          channel.send(BoolResult.failure(
+            "Directory does not appear to be a tree-sitter grammar",
+            {"path" => local_path}
+          ))
+          next
+        end
+
+        # Infer language if not provided
+        inferred_language = language
+        unless inferred_language
+          inferred_language = infer_language_from_path(local_path, grammar_json)
+          unless inferred_language
+            channel.send(BoolResult.failure(
+              "Could not infer language from local grammar. Please specify with --language option.",
+              {"path" => local_path}
+            ))
+            next
+          end
+        end
+
+        if cache = @@cache
+          channel.send(Installer::Coordinator.new(cache, [Installer::Local.new(local_path)]).install(inferred_language))
+        else
+          channel.send(BoolResult.failure(
+            "Cache directory not initialized",
+            {"path" => local_path}
           ))
         end
+      rescue ex
+        channel.send(BoolResult.failure(
+          "Error installing local grammar: #{ex.message}",
+          {"path" => local_path, "exception" => ex.class.to_s}
+        ))
       end
 
       channel

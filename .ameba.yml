@@ -5,3 +5,4 @@ Excluded:
   - lib/**/*
   - vendor/**/*
   - spec/**/*
+  - src/tree_sitter_manager/language_registry_generated.cr

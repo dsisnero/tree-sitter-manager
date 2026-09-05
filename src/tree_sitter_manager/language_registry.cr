@@ -300,8 +300,10 @@ module TreeSitterManager
     def register_language(info : LanguageInfo)
       @@mutex.synchronize do
         ensure_initialized_locked
-        updated_registry = @@registry.not_nil!.dup
-        updated_extension_map = @@extension_map.not_nil!.dup
+        registry = @@registry || raise "language registry not initialized"
+        extension_map = @@extension_map || raise "extension map not initialized"
+        updated_registry = registry.dup
+        updated_extension_map = extension_map.dup
 
         updated_registry[info.name] = info
         info.extensions.each do |ext|
@@ -317,8 +319,10 @@ module TreeSitterManager
     def unregister_language(language : String)
       @@mutex.synchronize do
         ensure_initialized_locked
-        updated_registry = @@registry.not_nil!.dup
-        updated_extension_map = @@extension_map.not_nil!.dup
+        registry = @@registry || raise "language registry not initialized"
+        extension_map = @@extension_map || raise "extension map not initialized"
+        updated_registry = registry.dup
+        updated_extension_map = extension_map.dup
 
         if info = updated_registry.delete(language)
           info.extensions.each do |ext|

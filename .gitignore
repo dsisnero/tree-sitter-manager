@@ -1,8 +1,10 @@
 # Local agent/tool settings
 .claude/
+.lattice-cache/
 
 # Local Crystal cache
 .crystal-cache/
+.build/
 
 # Temporary working artifacts
 temp/

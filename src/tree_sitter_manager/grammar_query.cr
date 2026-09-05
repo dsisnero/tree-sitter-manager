@@ -17,11 +17,9 @@ module TreeSitterManager
       result = Channel(String?).new
 
       spawn do
-        begin
-          result.send(path(language))
-        ensure
-          result.close
-        end
+        result.send(path(language))
+      ensure
+        result.close
       end
 
       result
@@ -35,11 +33,9 @@ module TreeSitterManager
       result = Channel(Bool).new
 
       spawn do
-        begin
-          result.send(available?(language))
-        ensure
-          result.close
-        end
+        result.send(available?(language))
+      ensure
+        result.close
       end
 
       result

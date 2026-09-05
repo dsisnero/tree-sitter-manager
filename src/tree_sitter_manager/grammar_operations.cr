@@ -13,16 +13,14 @@ module TreeSitterManager
       channel = Channel(Bool).new
 
       spawn do
-        begin
-          result = Process.run("which", ["tree-sitter"],
-            output: Process::Redirect::Pipe,
-            error: Process::Redirect::Pipe
-          )
+        result = Process.run("which", ["tree-sitter"],
+          output: Process::Redirect::Pipe,
+          error: Process::Redirect::Pipe
+        )
 
-          channel.send(result.success?)
-        rescue
-          channel.send(false)
-        end
+        channel.send(result.success?)
+      rescue
+        channel.send(false)
       end
 
       channel
@@ -56,16 +54,14 @@ module TreeSitterManager
       channel = Channel(Bool).new
 
       spawn do
-        begin
-          Dir.mkdir_p(File.dirname(target_dir))
+        Dir.mkdir_p(File.dirname(target_dir))
 
-          result_channel = run_command_async("git", ["clone", repo_url, target_dir])
-          success, _, _ = result_channel.receive
+        result_channel = run_command_async("git", ["clone", repo_url, target_dir])
+        success, _, _ = result_channel.receive
 
-          channel.send(success)
-        rescue
-          channel.send(false)
-        end
+        channel.send(success)
+      rescue
+        channel.send(false)
       end
 
       channel
@@ -131,13 +127,11 @@ module TreeSitterManager
       channel = Channel(Bool).new
 
       spawn do
-        begin
-          result_channel = run_command_async("tree-sitter", ["generate", grammar_js_path])
-          success, _, _ = result_channel.receive
-          channel.send(success)
-        rescue
-          channel.send(false)
-        end
+        result_channel = run_command_async("tree-sitter", ["generate", grammar_js_path])
+        success, _, _ = result_channel.receive
+        channel.send(success)
+      rescue
+        channel.send(false)
       end
 
       channel
@@ -148,31 +142,29 @@ module TreeSitterManager
       channel = Channel(Tuple(Bool, String?)).new
 
       spawn do
-        begin
-          src_dir = File.join(source_dir, "src")
-          src_files = c_source_files(src_dir)
-          if src_files.empty?
-            channel.send({false, "No C source files found in src/"})
-            next
-          end
-
-          # Build command
-          output_file = File.join(source_dir, Platform.lib_name(language))
-
-          args = ["-shared", "-fPIC", "-I#{src_dir}", "-o", output_file]
-          args.concat(src_files)
-
-          result_channel = run_command_async("cc", args)
-          success, _, error = result_channel.receive
-
-          if success
-            channel.send({true, output_file})
-          else
-            channel.send({false, "Compilation failed: #{error}"})
-          end
-        rescue ex
-          channel.send({false, ex.message})
+        src_dir = File.join(source_dir, "src")
+        src_files = c_source_files(src_dir)
+        if src_files.empty?
+          channel.send({false, "No C source files found in src/"})
+          next
         end
+
+        # Build command
+        output_file = File.join(source_dir, Platform.lib_name(language))
+
+        args = ["-shared", "-fPIC", "-I#{src_dir}", "-o", output_file]
+        args.concat(src_files)
+
+        result_channel = run_command_async("cc", args)
+        success, _, error = result_channel.receive
+
+        if success
+          channel.send({true, output_file})
+        else
+          channel.send({false, "Compilation failed: #{error}"})
+        end
+      rescue ex
+        channel.send({false, ex.message})
       end
 
       channel
@@ -186,16 +178,14 @@ module TreeSitterManager
       completed = Channel(Nil).new(1)
 
       spawn do
-        begin
-          config = Dir::Walk::Config.new(num_workers: 1)
-          Dir::Walk.walk(config, src_dir) do |path, entry, error|
-            next if error || !entry || !entry.file?
-            discovered.send(path) if path.ends_with?(".c")
-          end
-        ensure
-          discovered.close
-          completed.send(nil)
+        config = Dir::Walk::Config.new(num_workers: 1)
+        Dir::Walk.walk(config, src_dir) do |path, entry, error|
+          next if error || !entry || !entry.file?
+          discovered.send(path) if path.ends_with?(".c")
         end
+      ensure
+        discovered.close
+        completed.send(nil)
       end
 
       while path = discovered.receive?
@@ -211,12 +201,10 @@ module TreeSitterManager
       channel = Channel(Bool).new
 
       spawn do
-        begin
-          FileUtils.cp(src, dest)
-          channel.send(true)
-        rescue ex
-          channel.send(false)
-        end
+        FileUtils.cp(src, dest)
+        channel.send(true)
+      rescue ex
+        channel.send(false)
       end
 
       channel
@@ -227,12 +215,10 @@ module TreeSitterManager
       channel = Channel(Bool).new
 
       spawn do
-        begin
-          Dir.mkdir_p(path)
-          channel.send(true)
-        rescue
-          channel.send(false)
-        end
+        Dir.mkdir_p(path)
+        channel.send(true)
+      rescue
+        channel.send(false)
       end
 
       channel
