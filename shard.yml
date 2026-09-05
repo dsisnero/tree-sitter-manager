@@ -13,8 +13,9 @@ targets:
     main: src/tree-sitter-manager.cr
 
 dependencies:
+  clip:
+    github: erdnaxeli/clip
   dir-walk:
     github: dsisnero/dir-walk
   tree_sitter:
     github: dsisnero/crystal-tree-sitter
-    branch: fix/windows-uint16-portability

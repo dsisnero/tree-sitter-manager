@@ -1,10 +1,14 @@
 version: 2.0
 shards:
+  clip:
+    git: https://github.com/erdnaxeli/clip.git
+    version: 0.2.4
+
   dir-walk:
     git: https://github.com/dsisnero/dir-walk.git
     version: 0.1.0+git.commit.a780125653117b4d2e9d3d01179a04523943ebec
 
   tree_sitter:
     git: https://github.com/dsisnero/crystal-tree-sitter.git
-    version: 0.1.0+git.commit.6b19a0497b60140984d59322e6216d7826f928a6
+    version: 0.4.0
 
