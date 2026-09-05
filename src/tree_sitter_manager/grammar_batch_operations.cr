@@ -56,7 +56,7 @@ module TreeSitterManager
     }
 
     # Install multiple grammars with dependency resolution (async).
-    # Uses a Worker Pool pattern: languages at the same dependency level install in parallel.
+    # Languages at the same dependency level install in parallel via a worker pool.
     def self.install_multiple_async(
       languages : Array(String),
       dependencies : Hash(String, Array(String)) = DEFAULT_REQUIRED_LANGUAGES,
@@ -66,88 +66,88 @@ module TreeSitterManager
       channel = Channel(BatchResult).new
 
       spawn do
-        begin
-          levels = resolve_dependency_levels(languages, dependencies)
-          results = {} of String => BoolResult
-          installed = Set(String).new
-          failed = Set(String).new
+        levels = resolve_dependency_levels(languages, dependencies)
+        results = {} of String => BoolResult
+        failed = Set(String).new
 
-          levels.each do |level|
-            break if level.empty?
+        levels.each do |level|
+          break if level.empty?
 
-            # Skip languages whose dependencies failed
-            viable = level.select do |lang|
-              deps = dependencies[lang]? || [] of String
-              deps.all? { |dep| !failed.includes?(dep) }
-            end
-
-            next if viable.empty?
-
-            install_level(viable, results, installed, failed, force)
+          # Only install languages whose dependencies all succeeded.
+          viable = level.select do |lang|
+            deps = dependencies[lang]? || [] of String
+            deps.all? { |dep| !failed.includes?(dep) }
           end
+          next if viable.empty?
 
-          if failed.empty?
-            channel.send(BatchResult.success(results))
-          else
-            channel.send(BatchResult.new(
-              value: results,
-              metadata: {"failed" => failed.to_a.join(",")},
-            ))
+          parallel_map(viable, MAX_WORKERS) { |lang| install_one(lang, force) }.each do |lang, result|
+            results[lang] = result
+            failed.add(lang) unless result.success? && result.value == true
           end
-        rescue ex
-          channel.send(BatchResult.failure(
-            "Error in batch installation: #{ex.message}",
-            {"exception" => ex.class.to_s}
+        end
+
+        if failed.empty?
+          channel.send(BatchResult.success(results))
+        else
+          channel.send(BatchResult.new(
+            value: results,
+            metadata: {"failed" => failed.to_a.join(",")},
           ))
         end
+      rescue ex
+        channel.send(BatchResult.failure(
+          "Error in batch installation: #{ex.message}",
+          {"exception" => ex.class.to_s}
+        ))
       end
 
       channel
     end
 
-    # Install a level of independent languages in parallel using a Worker Pool
-    private def self.install_level(
-      languages : Array(String),
-      results : Hash(String, BoolResult),
-      installed : Set(String),
-      failed : Set(String),
-      force : Bool,
-    ) : Nil
-      return if languages.empty?
+    # Run `block` over each item concurrently on a fixed worker pool and return
+    # a Hash keyed by item. Work is spawned onto a shared `Parallel` execution
+    # context so it runs on real OS threads (not just cooperatively), while the
+    # worker pool communicates only through channels.
+    #
+    # Deadlock-free by construction: the work and result channels are buffered to
+    # the input size so every send fits without blocking, and the pool closes the
+    # result channel only after every worker has finished.
+    private def self.parallel_map(
+      items : Array(K),
+      max_workers : Int32 = MAX_WORKERS,
+      &block : K -> V
+    ) : Hash(K, V) forall K, V
+      return {} of K => V if items.empty?
 
-      num_workers = Math.min(MAX_WORKERS, languages.size)
-      work = Channel(String).new(languages.size)
-      result_ch = Channel(Tuple(String, BoolResult)).new(languages.size)
-      wg = WaitGroup.new(num_workers)
+      workers = Math.min(max_workers, items.size)
+      work = Channel(K).new(items.size)
+      results_ch = Channel(Tuple(K, V)).new(items.size)
+      wg = WaitGroup.new(workers)
 
-      # Start workers
-      num_workers.times do
-        spawn do
-          while lang = work.receive?
-            result = install_one(lang, force)
-            result_ch.send({lang, result})
+      workers.times do
+        install_context.spawn do
+          while item = work.receive?
+            results_ch.send({item, block.call(item)})
           end
           wg.done
         end
       end
 
-      # Send jobs
-      languages.each { |lang| work.send(lang) }
+      items.each { |item| work.send(item) }
       work.close
+      spawn { wg.wait; results_ch.close }
 
-      # Wait for all workers and close result channel
-      spawn { wg.wait; result_ch.close }
-
-      # Collect results
-      while tuple = result_ch.receive?
-        lang, result = tuple
-        results[lang] = result
-        if result.success? && result.value == true
-          installed.add(lang)
-        else
-          failed.add(lang)
-        end
+      results = {} of K => V
+      while tuple = results_ch.receive?
+        results[tuple[0]] = tuple[1]
       end
+      results
+    end
+
+    # Shared parallel context reused across batch operations. Class variables
+    # are initialized once safely, so this is created exactly once.
+    private def self.install_context : Fiber::ExecutionContext::Parallel
+      @@install_context ||= Fiber::ExecutionContext::Parallel.new("grammar-install", maximum: MAX_WORKERS)
     end
 
     # Install a single language — checks availability first, installs if missing
@@ -246,46 +246,20 @@ module TreeSitterManager
       channel = Channel(BatchResult).new
 
       spawn do
-        begin
-          languages = DEFAULT_REQUIRED_LANGUAGES.keys.to_a
-          results = {} of String => BoolResult
-          result_ch = Channel(Tuple(String, BoolResult)).new(languages.size)
-          wg = WaitGroup.new(MAX_WORKERS)
-          work = Channel(String).new(languages.size)
-
-          MAX_WORKERS.times do
-            spawn do
-              while lang = work.receive?
-                available_channel = GrammarManager.instance.grammar_available_async(lang)
-                available_result = Timeout.with_timeout_async(10_000, available_channel)
-
-                result = if available_result && available_result.success? && available_result.value == true
-                           BoolResult.new(value: false) # Not missing
-                         else
-                           BoolResult.new(value: true) # Missing
-                         end
-                result_ch.send({lang, result})
-              end
-              wg.done
-            end
-          end
-
-          languages.each { |lang| work.send(lang) }
-          work.close
-          spawn { wg.wait; result_ch.close }
-
-          while tuple = result_ch.receive?
-            lang, result = tuple
-            results[lang] = result
-          end
-
-          channel.send(BatchResult.success(results))
-        rescue ex
-          channel.send(BatchResult.failure(
-            "Error checking missing grammars: #{ex.message}",
-            {"exception" => ex.class.to_s}
-          ))
+        languages = DEFAULT_REQUIRED_LANGUAGES.keys.to_a
+        results = parallel_map(languages, MAX_WORKERS) do |lang|
+          available = GrammarManager.instance.grammar_available_async(lang)
+          available_result = Timeout.with_timeout_async(10_000, available)
+          missing = !(available_result && available_result.success? && available_result.value == true)
+          BoolResult.new(value: missing)
         end
+
+        channel.send(BatchResult.success(results))
+      rescue ex
+        channel.send(BatchResult.failure(
+          "Error checking missing grammars: #{ex.message}",
+          {"exception" => ex.class.to_s}
+        ))
       end
 
       channel
@@ -326,56 +300,32 @@ module TreeSitterManager
       channel = Channel(BatchResult).new
 
       spawn do
-        begin
-          cache_dir = GrammarManager.instance.cache_dir
-          unless cache_dir && Dir.exists?(cache_dir)
-            channel.send(BatchResult.failure(
-              "Cache directory not found",
-              {"cache_dir" => cache_dir.to_s}
-            ))
-            next
-          end
-
-          languages = DirectoryWalker.children(cache_dir).select do |name|
-            Dir.exists?(File.join(cache_dir, name))
-          end
-
-          results = {} of String => BoolResult
-          updated = Atomic(Int32).new(0)
-          result_ch = Channel(Tuple(String, BoolResult, Bool)).new(languages.size)
-          wg = WaitGroup.new(MAX_WORKERS)
-          work = Channel(String).new(languages.size)
-
-          MAX_WORKERS.times do
-            spawn do
-              while lang = work.receive?
-                update_result, was_updated = process_language_update(lang, dry_run)
-                result_ch.send({lang, update_result, was_updated})
-              end
-              wg.done
-            end
-          end
-
-          languages.each { |lang| work.send(lang) }
-          work.close
-          spawn { wg.wait; result_ch.close }
-
-          updated_count = 0
-          while tuple = result_ch.receive?
-            lang, result, was_updated = tuple
-            results[lang] = result
-            updated_count += 1 if was_updated
-          end
-
-          batch_result = BatchResult.new(value: results)
-          batch_result.metadata = {"updated_count" => updated_count.to_s}
-          channel.send(batch_result)
-        rescue ex
+        cache_dir = GrammarManager.instance.cache_dir || XDG.grammar_cache_dir
+        unless Dir.exists?(cache_dir)
           channel.send(BatchResult.failure(
-            "Error updating grammars: #{ex.message}",
-            {"exception" => ex.class.to_s}
+            "Cache directory not found",
+            {"cache_dir" => cache_dir.to_s}
           ))
+          next
         end
+
+        languages = DirectoryWalker.children(cache_dir).select do |name|
+          Dir.exists?(File.join(cache_dir, name))
+        end
+
+        results = parallel_map(languages, MAX_WORKERS) do |lang|
+          process_language_update(lang, dry_run)
+        end
+
+        updated_count = results.count { |_, outcome| outcome[1] }
+        batch_result = BatchResult.new(value: results.transform_values(&.[0]))
+        batch_result.metadata = {"updated_count" => updated_count.to_s}
+        channel.send(batch_result)
+      rescue ex
+        channel.send(BatchResult.failure(
+          "Error updating grammars: #{ex.message}",
+          {"exception" => ex.class.to_s}
+        ))
       end
 
       channel
