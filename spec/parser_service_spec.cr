@@ -1,4 +1,5 @@
 require "./spec_helper"
+require "file_utils"
 
 describe TreeSitterManager::Parser::Service do
   it "returns an asynchronous failure for an unsupported file" do
@@ -52,6 +53,46 @@ describe TreeSitterManager::Parser::Service do
     second.receive.success?.should be_true
     gateway.ensure_calls.should eq(1)
     gateway.load_calls.should eq(2)
+  end
+
+  it "threads old_tree through parse for incremental re-parsing of a real grammar" do
+    cache = File.join(Dir.tempdir, "tsm-oldtree-#{Random.rand(1_000_000)}")
+    previous_cache_home = ENV["XDG_CACHE_HOME"]?
+
+    ENV["XDG_CACHE_HOME"] = cache
+    TreeSitterManager::GrammarManager.test_reset
+
+    begin
+      install = TreeSitterManager::GrammarManager.instance.ensure_grammar_with_result("json", 120_000)
+      install.success?.should be_true, "failed to install real json grammar: #{install.error}"
+
+      service = TreeSitterManager::Parser::Service.new
+      content = %({"name": "test", "values": [1, 2, 3]})
+
+      first_tree = service.parse(content, "sample.json")
+      first_tree.should_not be_nil
+      first = first_tree.not_nil!
+
+      second_tree = service.parse(content, "sample.json", old_tree: first)
+      second_tree.should_not be_nil
+
+      first_root = first.root_node
+      second = second_tree.not_nil!.root_node
+
+      second.has_error?.should be_false
+      second.type.should eq(first_root.type)
+      second.start_byte.should eq(first_root.start_byte)
+      second.end_byte.should eq(first_root.end_byte)
+      second.child_count.should eq(first_root.child_count)
+    ensure
+      if previous_cache_home
+        ENV["XDG_CACHE_HOME"] = previous_cache_home
+      else
+        ENV.delete("XDG_CACHE_HOME")
+      end
+      TreeSitterManager::GrammarManager.test_reset
+      FileUtils.rm_rf(cache) if Dir.exists?(cache)
+    end
   end
 end
 

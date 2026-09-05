@@ -28,22 +28,20 @@ module TreeSitterManager
         @pending_requests = {} of String => Array(Channel(Result(::TreeSitter::Language?)))
       end
 
-      def parse_async(content : String, file_path : String, timeout_ms : Int32 = 30_000) : Channel(Result(ParseArtifact))
+      def parse_async(content : String, file_path : String, timeout_ms : Int32 = 30_000, old_tree : ::TreeSitter::Tree? = nil) : Channel(Result(ParseArtifact))
         result = Channel(Result(ParseArtifact)).new(1)
 
         spawn do
-          begin
-            result.send(parse_result(content, file_path, timeout_ms))
-          ensure
-            result.close
-          end
+          result.send(parse_result(content, file_path, timeout_ms, old_tree))
+        ensure
+          result.close
         end
 
         result
       end
 
-      def parse(content : String, file_path : String, timeout_ms : Int32 = 30_000) : ::TreeSitter::Tree?
-        result = parse_result(content, file_path, timeout_ms)
+      def parse(content : String, file_path : String, timeout_ms : Int32 = 30_000, old_tree : ::TreeSitter::Tree? = nil) : ::TreeSitter::Tree?
+        result = parse_result(content, file_path, timeout_ms, old_tree)
         result.value.try(&.tree)
       end
 
@@ -63,11 +61,9 @@ module TreeSitterManager
         result = Channel(Bool).new(1)
 
         spawn do
-          begin
-            result.send(@resolver.supported_languages.includes?(language))
-          ensure
-            result.close
-          end
+          result.send(@resolver.supported_languages.includes?(language))
+        ensure
+          result.close
         end
 
         result
@@ -81,11 +77,9 @@ module TreeSitterManager
         result = Channel(Array(String)).new(1)
 
         spawn do
-          begin
-            result.send(supported_languages)
-          ensure
-            result.close
-          end
+          result.send(supported_languages)
+        ensure
+          result.close
         end
 
         result
@@ -125,7 +119,7 @@ module TreeSitterManager
         result
       end
 
-      private def parse_result(content : String, file_path : String, timeout_ms : Int32) : Result(ParseArtifact)
+      private def parse_result(content : String, file_path : String, timeout_ms : Int32, old_tree : ::TreeSitter::Tree? = nil) : Result(ParseArtifact)
         language = grammar_language_for_file(file_path)
         return Result(ParseArtifact).failure("Unsupported file extension", {"file_path" => file_path}) unless language
 
@@ -134,7 +128,7 @@ module TreeSitterManager
         return Result(ParseArtifact).failure("Failed to get language", {"language" => language, "file_path" => file_path}) unless lang
 
         parser = ::TreeSitter::Parser.new(language: lang)
-        tree = parser.parse(nil, IO::Memory.new(content))
+        tree = parser.parse(content, old_tree)
         Result(ParseArtifact).success(ParseArtifact.new(tree))
       rescue ex
         Result(ParseArtifact).failure("Unexpected parse error: #{ex.message}", {"file_path" => file_path})
@@ -214,12 +208,12 @@ module TreeSitterManager
       service.shutdown
     end
 
-    def self.parse_async(content : String, file_path : String, timeout_ms : Int32 = 30_000) : Channel(Result(ParseArtifact))
-      service.parse_async(content, file_path, timeout_ms)
+    def self.parse_async(content : String, file_path : String, timeout_ms : Int32 = 30_000, old_tree : ::TreeSitter::Tree? = nil) : Channel(Result(ParseArtifact))
+      service.parse_async(content, file_path, timeout_ms, old_tree)
     end
 
-    def self.parse(content : String, file_path : String, timeout_ms : Int32 = 30_000) : ::TreeSitter::Tree?
-      service.parse(content, file_path, timeout_ms)
+    def self.parse(content : String, file_path : String, timeout_ms : Int32 = 30_000, old_tree : ::TreeSitter::Tree? = nil) : ::TreeSitter::Tree?
+      service.parse(content, file_path, timeout_ms, old_tree)
     end
   end
 end
