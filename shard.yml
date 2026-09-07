@@ -19,3 +19,4 @@ dependencies:
     github: dsisnero/dir-walk
   tree_sitter:
     github: dsisnero/crystal-tree-sitter
+    branch: fix/thread-safe-node-string-pool-v04
