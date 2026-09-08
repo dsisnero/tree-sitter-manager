@@ -75,8 +75,9 @@ module TreeSitterManager
       channel = Channel(BoolResult).new
 
       spawn do
-        # Check via tree-sitter repository (fast path)
-        if TreeSitter::Repository.language_names.includes?(language)
+        # A repository entry only proves grammar sources were discovered. It is
+        # available to the parser only after its shared library was built.
+        if repository_grammar_path?(language)
           channel.send(BoolResult.success)
           next
         end
@@ -262,6 +263,22 @@ module TreeSitterManager
       end
 
       @@cache.try &.[language]?
+    end
+
+    # The crystal-tree-sitter repository records grammar source directories,
+    # including uncompiled checkouts. Do not let those source-only entries skip
+    # installation: parsing requires a loadable shared library.
+    private def repository_grammar_path?(language : String) : String?
+      repository_dir = LanguageLoader.repository_language_paths[language]?
+      return nil unless repository_dir
+
+      symbols = [LanguageRegistry.c_symbol_for(language), language].uniq
+      symbols.each do |symbol|
+        path = repository_dir.join(Platform.lib_name(symbol)).to_s
+        return path if File.exists?(path)
+      end
+
+      nil
     end
 
     # Get directory containing the binary

@@ -19,3 +19,17 @@ module TreeSitterManager
     end
   end
 end
+
+module TreeSitter
+  class Config
+    def self.test_reset : Nil
+      @@current = nil
+    end
+  end
+
+  class Repository
+    def self.test_reset : Nil
+      @@language_paths = nil
+    end
+  end
+end

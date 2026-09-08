@@ -1,6 +1,46 @@
 require "./spec_helper"
 require "../src/tree_sitter_manager/grammar_manager"
 
+describe TreeSitterManager::GrammarManager do
+  it "does not report an uncompiled repository grammar as available" do
+    root = File.join(Dir.tempdir, "tsm-uncompiled-repository-#{Random.rand(1_000_000)}")
+    config_home = File.join(root, "config")
+    parser_dir = File.join(root, "parsers")
+    grammar_dir = File.join(parser_dir, "tree-sitter-uncompiled", "src")
+    cache_dir = File.join(root, "cache")
+    previous_config_home = ENV["XDG_CONFIG_HOME"]?
+
+    begin
+      Dir.mkdir_p(grammar_dir)
+      Dir.mkdir_p(File.join(config_home, "tree-sitter"))
+      File.write(File.join(grammar_dir, "grammar.json"), "{}")
+      File.write(
+        File.join(config_home, "tree-sitter", "config.json"),
+        %({"parser-directories":["#{parser_dir}"]})
+      )
+      ENV["XDG_CONFIG_HOME"] = config_home
+      TreeSitter::Config.test_reset
+      TreeSitter::Repository.test_reset
+      TreeSitterManager::GrammarManager.test_reset(cache_dir)
+      TreeSitterManager::GrammarManager.init(cache_dir)
+
+      result = TreeSitterManager::GrammarManager.instance.grammar_available_async("uncompiled").receive
+      result.success?.should be_true
+      result.value.should be_false
+    ensure
+      if previous_config_home
+        ENV["XDG_CONFIG_HOME"] = previous_config_home
+      else
+        ENV.delete("XDG_CONFIG_HOME")
+      end
+      TreeSitter::Config.test_reset
+      TreeSitter::Repository.test_reset
+      TreeSitterManager::GrammarManager.test_reset
+      FileUtils.rm_rf(root) if Dir.exists?(root)
+    end
+  end
+end
+
 describe TreeSitterManager::GrammarOperations do
   describe "compile_shared_library_async" do
     it "returns stderr on compilation failure" do
