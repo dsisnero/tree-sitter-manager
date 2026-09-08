@@ -275,10 +275,36 @@ module TreeSitterManager
       symbols = [LanguageRegistry.c_symbol_for(language), language].uniq
       symbols.each do |symbol|
         path = repository_dir.join(Platform.lib_name(symbol)).to_s
-        return path if File.exists?(path)
+        return path if File.exists?(path) && library_exports_language?(path, symbol)
       end
 
       nil
+    end
+
+    # A library pathname alone is not enough: dynamic linking can still fail,
+    # and a library can omit the parser symbol required for this language.
+    private def library_exports_language?(path : String, symbol : String) : Bool
+      {% if flag?(:win32) %}
+        handle = LibC.LoadLibraryExW(path.to_utf16, Pointer(Void).null, 0)
+        return false if handle.null?
+
+        begin
+          !LibC.GetProcAddress(handle, "tree_sitter_#{symbol}").as(Void*).null?
+        ensure
+          LibC.FreeLibrary(handle)
+        end
+      {% else %}
+        handle = LibC.dlopen(path, Platform.dlopen_flags)
+        return false if handle.null?
+
+        begin
+          !LibC.dlsym(handle, "tree_sitter_#{symbol}").null?
+        ensure
+          LibC.dlclose(handle)
+        end
+      {% end %}
+    rescue
+      false
     end
 
     # Get directory containing the binary

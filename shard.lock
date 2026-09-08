@@ -10,5 +10,5 @@ shards:
 
   tree_sitter:
     git: https://github.com/dsisnero/crystal-tree-sitter.git
-    version: 0.4.0
+    version: 0.4.0+git.commit.70f9b3c1c96685725677d288dbd863a8cd87be47
 
