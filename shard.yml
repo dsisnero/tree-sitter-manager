@@ -17,6 +17,7 @@ dependencies:
     github: erdnaxeli/clip
   dir-walk:
     github: dsisnero/dir-walk
+    branch: codex/windows-raw-dirent-fallback
   tree_sitter:
     github: dsisnero/crystal-tree-sitter
-    branch: fix/thread-safe-node-string-pool-v04
+    branch: codex/windows-abi-dynamic-loader
