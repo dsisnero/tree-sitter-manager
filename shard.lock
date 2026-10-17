@@ -6,9 +6,9 @@ shards:
 
   dir-walk:
     git: https://github.com/dsisnero/dir-walk.git
-    version: 0.1.0+git.commit.a780125653117b4d2e9d3d01179a04523943ebec
+    version: 0.1.0+git.commit.2cc9758436bc42008e2ed6e70c8f143c84796629
 
   tree_sitter:
     git: https://github.com/dsisnero/crystal-tree-sitter.git
-    version: 0.4.0+git.commit.70f9b3c1c96685725677d288dbd863a8cd87be47
+    version: 0.4.0+git.commit.967a40ab396ad9e906d4a8ca2d2a16fa562fbc7c
 

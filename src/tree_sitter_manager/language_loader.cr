@@ -1,6 +1,9 @@
 require "tree_sitter"
 require "lib_c"
 require "./grammar_loader"
+{% if flag?(:win32) %}
+  require "c/libloaderapi"
+{% end %}
 
 module TreeSitterManager
   module LanguageLoader
@@ -79,10 +82,18 @@ module TreeSitterManager
 
       raise "Missing grammar: #{so_path}" unless File.exists?(so_path.to_s)
 
-      handle = LibC.dlopen(so_path.to_s, LibC::RTLD_LAZY | LibC::RTLD_LOCAL)
+      handle = {% if flag?(:win32) %}
+                 LibC.LoadLibraryExW(so_path.to_s.to_utf16, Pointer(Void).null, 0)
+               {% else %}
+                 LibC.dlopen(so_path.to_s, LibC::RTLD_LAZY | LibC::RTLD_LOCAL)
+               {% end %}
       raise "Cannot load grammar: #{so_path}" if handle.null?
 
-      ptr = LibC.dlsym(handle, "tree_sitter_#{symbol_name}")
+      ptr = {% if flag?(:win32) %}
+              LibC.GetProcAddress(handle, "tree_sitter_#{symbol_name}").as(Void*)
+            {% else %}
+              LibC.dlsym(handle, "tree_sitter_#{symbol_name}")
+            {% end %}
       raise "Missing symbol tree_sitter_#{symbol_name} in #{so_path}" unless ptr
 
       Proc(LibTreeSitter::TSLanguage*).new(ptr, Pointer(Void).null).call

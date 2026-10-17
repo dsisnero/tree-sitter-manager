@@ -17,6 +17,7 @@ dependencies:
     github: erdnaxeli/clip
   dir-walk:
     github: dsisnero/dir-walk
+    commit: 2cc9758436bc42008e2ed6e70c8f143c84796629
   tree_sitter:
     github: dsisnero/crystal-tree-sitter
-    branch: fix/thread-safe-node-string-pool-v04
+    commit: 967a40ab396ad9e906d4a8ca2d2a16fa562fbc7c
